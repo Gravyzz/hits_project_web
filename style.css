@@ -48,4 +48,47 @@ body {
 
 .app {
     height: 100%;
+    display: grid;
+    grid-template-rows: 56px 1fr;
+}
+
+.main {
+    height: 100%;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+}
+
+.toolbox {
+    background: linear-gradient(180deg, #19b7b7, #0ea5a5);
+    padding: 12px;
+    overflow: auto;
+}
+
+.toolbox-title {
+    font-weight: 900;
+    margin-bottom: 12px;
+    color: #0b2;
+}
+
+.tool-item {
+    width: 100%;
+    text-align: left;
+    background: rgba(0, 0, 0, .25);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, .25);
+    padding: 10px 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    margin-bottom: 10px;
+}
+
+.workspace-wrap {
+    position: relative;
+    height: 100%;
+}
+
+.workspace {
+    position: absolute;
+    inset: 0;
+    background: #111;
 }
