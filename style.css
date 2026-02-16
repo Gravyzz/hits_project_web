@@ -67,7 +67,7 @@ body {
 .toolbox-title {
     font-weight: 900;
     margin-bottom: 12px;
-    color: #0b2;
+    color: #2a4446;
 }
 
 .tool-item {
@@ -90,5 +90,5 @@ body {
 .workspace {
     position: absolute;
     inset: 0;
-    background: #111;
+    background-image: url('pics/workspace_background.jpg.avif');
 }
