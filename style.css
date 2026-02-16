@@ -96,3 +96,15 @@ body {
     background-size: 26px 26px;
     overflow: hidden;
 }
+
+.console {
+  position: absolute;
+  left: 20px;
+  bottom: 14px;
+  width: 520px;
+  height: 160px;
+  background: rgba(30,30,30,.95);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 12px;
+  overflow: hidden;
+}
