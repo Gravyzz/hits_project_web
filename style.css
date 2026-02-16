@@ -1,0 +1,17 @@
+* { box-sizing: border-box;}
+html, body {height: 100%; margin: 0; }
+
+:root {
+    --bg: #1b1b1f;
+    --text: #eaeaea;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: sistem-ui, sans-serif;
+}
+
+.app {
+    height: 100%;
+}
