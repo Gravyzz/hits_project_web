@@ -4,7 +4,7 @@ html, body {height: 100%; margin: 0; }
 :root {
     --bg: #1b1b1f;
     --text: #eaeaea;
-
+    --grid: rgba(255, 255, 255, .08);
     --topbar: #f0c300;
 }
 
@@ -90,5 +90,9 @@ body {
 .workspace {
     position: absolute;
     inset: 0;
-    background-image: url('pics/workspace_background.jpg.avif');
+    background:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 26px 26px;
+    overflow: hidden;
 }
