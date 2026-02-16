@@ -27,10 +27,26 @@
             </aside>
 
             <section class="workspace-wrap">
-                <div class="console">
-                    <div class="console-title">Console</div>
-                    <pre class="console-text">...</pre>
-                </div>
+                <div class="console" id="console">
+                    <div class="console-header">
+                        <div class="console-title">
+                        <span class="console-dots">
+                            <button class="dot dot-red" id="consoleClose" aria-label="Close (clear + hide)"></button>
+                            <button class="dot dot-yellow" id="consoleHide" aria-label="Hide (keep logs)"></button>
+                        </span>
+                        Console
+                        </div>
+
+                        <div class="console-actions">
+                        <button class="console-btn" id="consoleClear" aria-label="Clear console">Clear</button>
+                        </div>
+                    </div>
+
+                    <div class="console-body">
+                        <pre class="console-text" id="consoleText">Ready…</pre>
+                    </div>
+                    </div>
+                    </div>
                 <div class="workspace"></div>
             </section>
         </main>

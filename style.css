@@ -101,10 +101,111 @@ body {
   position: absolute;
   left: 20px;
   bottom: 14px;
-  width: 520px;
-  height: 160px;
-  background: rgba(30,30,30,.95);
-  border: 1px solid rgba(255,255,255,.15);
-  border-radius: 12px;
+
+  width: min(640px, calc(100% - 40px));
+  height: 190px;
+
+ 
+  background: #0f0f12;
+  border: 1px solid #3a3a40;
+  border-radius: 14px;
   overflow: hidden;
+
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.08) inset,
+    0 18px 40px rgba(0, 0, 0, 0.75);
+
+  z-index: 50;
+}
+
+.console-header {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 10px 0 12px;
+
+  background: #17171c;
+  border-bottom: 1px solid #2f2f35;
+}
+
+.console-body {
+  height: calc(100% - 42px);
+  overflow: auto;
+  padding: 10px 12px;
+
+  background: #0f0f12; 
+}
+
+
+.console-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  color: #ffffff;
+}
+
+.console-dots {
+  display: inline-flex;
+  gap: 8px;
+  margin-right: 8px;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.dot:active {
+  transform: scale(0.95);
+}
+
+.dot-red {
+  background: #ff5f56;
+}
+
+.dot-yellow {
+  background: #ffbd2e;
+}
+
+.console-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.console-btn {
+  border: 1px solid #3a3a3f;
+  background: #2a2a2e;
+  color: #ffffff;
+
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.console-btn:hover {
+  background: #3a3a3f;
+}
+
+.console-text {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.35;
+
+  color: #7CFC9A;
+  white-space: pre-wrap;
+}
+
+.console.is-hidden {
+  display: none;
 }
