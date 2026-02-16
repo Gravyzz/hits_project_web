@@ -13,3 +13,7 @@ target/
 oracleJdk-25/
 jdk/
 jre/
+
+bin/
+.vscode/
+*.class
