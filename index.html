@@ -21,9 +21,21 @@
             <aside class="toolbox">
                 <div class="toolbox-title">Blocks</div>
 
-                <button class="tool-item">output</button>
-                <button class="tool-item">if</button>
-                <button class="tool-item">while</button>
+                
+                <div class="tool-item">
+                    <span class = "box-name">Создать переменную</span><br>
+                    <span class="string">Название:</span>
+                    <input type="text" value="">
+                    <span class="string">Тип данных:</span>
+                    <select class="selection">
+                        <option value="int">Int</option>
+                        <option value="str">Str</option>
+                    </select><br>
+                    <span class="string">Значение:</span>
+                    <input type="text" value="">
+                </div>
+                
+                
             </aside>
 
             <section class="workspace-wrap">
@@ -44,7 +56,6 @@
 
                     <div class="console-body">
                         <pre class="console-text" id="consoleText">Ready…</pre>
-                    </div>
                     </div>
                     </div>
                 <div class="workspace"></div>
