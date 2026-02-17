@@ -48,6 +48,16 @@ function showConsole() {
   renderConsole();
 }
 
+function clampConsoleToWorkspace() {
+  const wrapRect = workspaceWrap.getBoundingClientRect();
+  const maxLeft = wrapRect.width - consoleEl.offsetWidth;
+  const maxTop = wrapRect.height - consoleEl.offsetHeight;
+
+  posState.left = clamp(posState.left, 0, Math.max(0, maxLeft));
+  posState.top = clamp(posState.top, 0, Math.max(0, maxTop));
+  applyConsolePos();
+}
+
 // --- Events ---
 consoleClearBtn.addEventListener("click", () => {
   clearLogs();
@@ -115,6 +125,7 @@ resizer.addEventListener("pointermove", (e) => {
   sizeState.height = clamp(start.h + dy, 120, 420);
 
   applyConsoleSize();
+  clampConsoleToWorkspace();
 });
 
 resizer.addEventListener("pointerup", () => {

@@ -161,6 +161,8 @@ body {
   background: #17171c;
   border-bottom: 1px solid #2f2f35;
 }
+.console-header { cursor: grab; }
+.console-header:active { cursor: grabbing; }
 
 .console-body {
   height: calc(100% - 42px);
