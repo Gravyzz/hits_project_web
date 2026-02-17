@@ -327,3 +327,41 @@ canvas.addEventListener('mousedown', (e) => {
   e.preventDefault();
   startDrag(block, e.clientX, e.clientY);
 });
+
+
+
+
+
+//------block delete--------
+let selectedBlock = null;
+
+// выбор блока кликом
+canvas.addEventListener('mousedown', (e) => {
+  const block = e.target.closest('.placed-block');
+
+  // кликнули в пустое место — снять выделение
+  if (!block) {
+    if (selectedBlock) selectedBlock.classList.remove('selected');
+    selectedBlock = null;
+    return;
+  }
+
+  // если кликаем по input/select — не меняем выделение
+  if (e.target.closest('input, select, textarea, button')) return;
+
+  if (selectedBlock) selectedBlock.classList.remove('selected');
+  selectedBlock = block;
+  selectedBlock.classList.add('selected');
+});
+
+// удаление по Delete/Backspace
+document.addEventListener('keydown', (e) => {
+  if (!selectedBlock) return;
+  if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+
+  // чтобы случайно не удалить, пока печатаешь в input
+  if (document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
+
+  selectedBlock.remove();
+  selectedBlock = null;
+});
