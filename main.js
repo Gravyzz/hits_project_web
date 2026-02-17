@@ -1,6 +1,6 @@
 const consoleEl = document.getElementById("console");
 const consoleTextEl = document.getElementById("consoleText");
-
+const resizer = document.getElementById("consoleResizer");
 const consoleBtnTop = document.getElementById("consoleBtn");
 const consoleClearBtn = document.getElementById("consoleClear");
 const consoleHideBtn = document.getElementById("consoleHide");
@@ -69,3 +69,58 @@ consoleBtnTop.addEventListener("click", () => {
 });
 
 renderConsole();
+
+
+// ----Размеры консоли-----
+
+const sizeState = {
+  width: consoleEl.offsetWidth,
+  height: consoleEl.offsetHeight,
+};
+
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function applyConsoleSize() {
+  consoleEl.style.width = sizeState.width + "px";
+  consoleEl.style.height = sizeState.height + "px";
+}
+
+let resizing = false;
+let start = null;
+
+resizer.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  resizing = true;
+  resizer.setPointerCapture(e.pointerId);
+
+  start = {
+    x: e.clientX,
+    y: e.clientY,
+    w: sizeState.width,
+    h: sizeState.height,
+  };
+});
+
+resizer.addEventListener("pointermove", (e) => {
+  if (!resizing) return;
+
+  const dx = e.clientX - start.x;
+  const dy = e.clientY - start.y;
+
+  sizeState.width = clamp(start.w + dx, 320, 900);
+  sizeState.height = clamp(start.h + dy, 120, 420);
+
+  applyConsoleSize();
+});
+
+resizer.addEventListener("pointerup", () => {
+  resizing = false;
+});
+
+resizer.addEventListener("pointercancel", () => {
+  resizing = false;
+});
+
+applyConsoleSize();

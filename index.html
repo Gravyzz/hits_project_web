@@ -40,25 +40,49 @@
 
             <section class="workspace-wrap">
                 <div class="console" id="console">
-                    <div class="console-header">
-                        <div class="console-title">
-                        <span class="console-dots">
-                            <button class="dot dot-red" id="consoleClose" aria-label="Close (clear + hide)"></button>
-                            <button class="dot dot-yellow" id="consoleHide" aria-label="Hide (keep logs)"></button>
-                        </span>
-                        Console
-                        </div>
 
-                            <div class="console-actions">
-                                <button class="console-btn" id="consoleClear" aria-label="Clear console">Clear</button>
-                            </div>
-                        </div>
+                <div class="console-header">
+                    <div class="console-title">
 
-                    <div class="console-body">
-                        <pre class="console-text" id="consoleText">Ready…</pre>
+                    <div class="console-dots">
+                        <button
+                        class="dot dot-red"
+                        id="consoleClose"
+                        aria-label="Close console">
+                        </button>
+
+                        <button
+                        class="dot dot-yellow"
+                        id="consoleHide"
+                        aria-label="Hide console">
+                        </button>
                     </div>
+
+                    <span>Console</span>
                     </div>
-                <div class="workspace"></div>
+
+                    <div class="console-actions">
+                    <button
+                        class="console-btn"
+                        id="consoleClear">
+                        Clear
+                    </button>
+                    </div>
+                </div>
+
+                <div class="console-body">
+                    <pre class="console-text" id="consoleText">
+                Ready…
+                    </pre>
+                </div>
+
+                <div
+                    class="console-resizer"
+                    id="consoleResizer"
+                    aria-label="Resize console">
+                </div>
+
+                </div>
             </section>
         </main>
     </div>
