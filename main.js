@@ -8,6 +8,9 @@ const consoleHideBtn = document.getElementById("consoleHide");
 const consoleCloseBtn = document.getElementById("consoleClose");
 const workspaceWrap = consoleEl.parentElement;
 
+const GAP = 5;  
+const MAGNET = 70;    
+
 const consoleState = {
   visible: true,
   logs: ["Ready…"],
@@ -192,6 +195,7 @@ headerEl.addEventListener("pointercancel", () => {
 });
 
 
+
 // ------- Drug tools --------
 
 // Drag & Drop для VibeBlock (кастомный)
@@ -206,6 +210,65 @@ const OVERSCROLL = 30; // насколько можно вылезать за к
 let active = null;
 let offsetX = 0;
 let offsetY = 0;
+
+
+function getLeftTop(el) {
+  return {
+    left: parseFloat(el.style.left) || 0,
+    top:  parseFloat(el.style.top)  || 0,
+  };
+}
+
+function distance(a, b) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return Math.hypot(dx, dy);
+}
+
+// Найти лучший "якорь" для active: куда его приклеить (под какой блок)
+function findBestSnapTarget(activeEl) {
+  const { left: ax, top: ay } = getLeftTop(activeEl);
+  const aW = activeEl.offsetWidth;
+  const aH = activeEl.offsetHeight;
+
+  // точка "верх середина" активного блока
+  const aTopMid = { x: ax + aW / 2, y: ay };
+
+  let best = null;
+
+  canvas.querySelectorAll('.placed-block').forEach((b) => {
+    if (b === activeEl) return;
+
+    const { left: bx, top: by } = getLeftTop(b);
+    const bW = b.offsetWidth;
+    const bH = b.offsetHeight;
+
+    // точка "низ середина" блока-цели
+    const bBottomMid = { x: bx + bW / 2, y: by + bH };
+
+    const d = distance(aTopMid, bBottomMid);
+
+    // плюс условие: по X должны быть более-менее в одной колонке
+    const xClose = Math.abs((ax + aW / 2) - (bx + bW / 2)) <= 80;
+
+    if (d <= MAGNET && xClose) {
+      if (!best || d < best.d) best = { el: b, d };
+    }
+  });
+
+  return best ? best.el : null;
+}
+
+function snapUnder(activeEl, targetEl) {
+  const { left: bx, top: by } = getLeftTop(targetEl);
+  const y = by + targetEl.offsetHeight + GAP;
+
+  // магнитим по X (колонка)
+  activeEl.style.left = bx + 'px';
+  activeEl.style.top  = y + 'px';
+}
+
+
 
 function startDrag(block, clientX, clientY, presetOffsetX, presetOffsetY) {
   active = block;
@@ -258,7 +321,7 @@ function onMove(e) {
 function onUp() {
   if (!active) return;
 
-  // Вернуть блок внутрь canvas (тут уже строго, без overscroll)
+  // 1) Сначала строго возвращаем внутрь canvas
   const bw = active.offsetWidth;
   const bh = active.offsetHeight;
 
@@ -273,14 +336,34 @@ function onUp() {
   if (x > maxX) x = maxX;
   if (y > maxY) y = maxY;
 
-  active.style.left = x + 'px';
-  active.style.top  = y + 'px';
+  active.style.left = x + "px";
+  active.style.top  = y + "px";
 
-  active.classList.remove('dragging');
+  // 2) Потом пробуем магнит
+  const target = findBestSnapTarget(active);
+  if (target) {
+    snapUnder(active, target);
+
+    // связь (опционально)
+    target.dataset.next = active.dataset.id;
+    active.dataset.prev = target.dataset.id;
+
+    // 3) на всякий случай ещё раз зажмём (если snap поставил близко к краю)
+    const x2 = parseFloat(active.style.left) || 0;
+    const y2 = parseFloat(active.style.top)  || 0;
+
+    const maxX2 = canvas.clientWidth  - active.offsetWidth;
+    const maxY2 = canvas.clientHeight - active.offsetHeight;
+
+    active.style.left = Math.max(0, Math.min(x2, maxX2)) + "px";
+    active.style.top  = Math.max(0, Math.min(y2, maxY2)) + "px";
+  }
+
+  active.classList.remove("dragging");
   active = null;
 
-  document.removeEventListener('mousemove', onMove);
-  document.removeEventListener('mouseup', onUp);
+  document.removeEventListener("mousemove", onMove);
+  document.removeEventListener("mouseup", onUp);
 }
 
 // 1) Drag из TOOLBOX -> создаём копию в CANVAS
@@ -296,6 +379,10 @@ toolbox.addEventListener('mousedown', (e) => {
   const clone = item.cloneNode(true);
   clone.classList.add('placed-block');
   clone.style.position = 'absolute';
+  
+  clone.dataset.id = crypto.randomUUID();
+  clone.dataset.prev = "";
+  clone.dataset.next = "";  
 
   // фиксируем ширину как в панели (чтобы не растягивался на canvas)
   clone.style.width = item.getBoundingClientRect().width + 'px';
@@ -363,5 +450,21 @@ document.addEventListener('keydown', (e) => {
   if (document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
 
   selectedBlock.remove();
+  selectedBlock = null;
+});
+
+//--------- delete all ----------
+const deleteAllBtn = document.getElementById("deleteAllBtn");
+
+deleteAllBtn.addEventListener("click", () => {
+  const blocks = canvas.querySelectorAll(".placed-block");
+
+  if (blocks.length === 0) return;
+
+  const confirmed = confirm("Are you sure you want to delete all blocks?");
+
+  if (!confirmed) return;
+
+  blocks.forEach(block => block.remove());
   selectedBlock = null;
 });
