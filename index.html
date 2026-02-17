@@ -14,7 +14,7 @@
             <div class="actions">
                 <button class="btn btn-run">Run</button>
                 <button class="btn btn-danger">Delete all</button>
-                <button class="btn">Console</button>
+                <button class="btn" id="consoleBtn">Console</button>
             </div>
         </header>
         <main class="main">
@@ -25,7 +25,7 @@
                 <div class="tool-item">
                     <span class = "box-name">Создать переменную</span><br>
                     <span class="string">Название:</span>
-                    <input type="text" value="">
+                    <input type="text" value="" placeholder="Введите данные">
                     <span class="string">Тип данных:</span>
                     <select class="selection">
                         <option value="int">Int</option>
@@ -49,10 +49,10 @@
                         Console
                         </div>
 
-                        <div class="console-actions">
-                        <button class="console-btn" id="consoleClear" aria-label="Clear console">Clear</button>
+                            <div class="console-actions">
+                                <button class="console-btn" id="consoleClear" aria-label="Clear console">Clear</button>
+                            </div>
                         </div>
-                    </div>
 
                     <div class="console-body">
                         <pre class="console-text" id="consoleText">Ready…</pre>
