@@ -72,15 +72,30 @@ body {
 
 .tool-item {
     width: 100%;
-    text-align: left;
     background: rgba(0, 0, 0, .25);
+    font-size: 12px;
     color: white;
     border: 1px solid rgba(255, 255, 255, .25);
     padding: 10px 12px;
     border-radius: 12px;
     cursor: pointer;
     margin-bottom: 10px;
+    gap:8px;
 }
+
+.tool-item .box-name {
+    font-size: 16px;
+    text-align: center;
+    display: block;
+    margin-bottom: -5px;
+}
+
+.selection {
+    width: 68%;
+    text-align: center;
+}
+
+
 
 .workspace-wrap {
     position: relative;
