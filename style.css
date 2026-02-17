@@ -34,6 +34,7 @@ html, body {height: 100%; margin: 0; }
     border-radius: 10px;
     cursor: pointer;
     font-weight: 700;
+    box-shadow: 5px 5px 5px rgba(0, 0, 0, 0.3), 0 0 10px rgba(205, 194, 194, 0.4) inset;
 }
 
 
@@ -141,13 +142,16 @@ body {
   bottom: 6px;
   width: 14px;
   height: 14px;
-  cursor: nwse-resize;
+  cursor: grab;
 
   /* “уголок” */
   border-right: 2px solid rgba(255,255,255,.35);
   border-bottom: 2px solid rgba(255,255,255,.35);
   border-radius: 2px;
   opacity: 0.8;
+}
+.console-resizer:active {
+  cursor: grabbing;
 }
 
 .console-header {
