@@ -1,10 +1,12 @@
 const consoleEl = document.getElementById("console");
 const consoleTextEl = document.getElementById("consoleText");
+const headerEl = document.getElementById("consoleHeader");
 const resizer = document.getElementById("consoleResizer");
 const consoleBtnTop = document.getElementById("consoleBtn");
 const consoleClearBtn = document.getElementById("consoleClear");
 const consoleHideBtn = document.getElementById("consoleHide");
 const consoleCloseBtn = document.getElementById("consoleClose");
+const workspaceWrap = consoleEl.parentElement;
 
 const consoleState = {
   visible: true,
@@ -124,3 +126,66 @@ resizer.addEventListener("pointercancel", () => {
 });
 
 applyConsoleSize();
+
+// -----Перенос консоли-------
+let dragging = false;
+let dragStart = null;
+
+headerEl.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+
+  const target = e.target;
+  if (target.closest("button")) return;
+
+  dragging = true;
+  headerEl.setPointerCapture(e.pointerId);
+
+  const rect = consoleEl.getBoundingClientRect();
+  dragStart = {
+    pointerX: e.clientX,
+    pointerY: e.clientY,
+    startLeft: rect.left,
+    startTop: rect.top,
+  };
+});
+
+headerEl.addEventListener("pointermove", (e) => {
+  if (!dragging) return;
+
+  const wrapRect = workspaceWrap.getBoundingClientRect();
+
+  const dx = e.clientX - dragStart.pointerX;
+  const dy = e.clientY - dragStart.pointerY;
+
+  // текущие координаты в координатах viewport -> переводим в координаты workspaceWrap
+  let newLeft = (dragStart.startLeft - wrapRect.left) + dx;
+  let newTop = (dragStart.startTop - wrapRect.top) + dy;
+
+  // ограничения, чтобы консоль не уехала за границы
+  const maxLeft = wrapRect.width - consoleEl.offsetWidth;
+  const maxTop = wrapRect.height - consoleEl.offsetHeight;
+
+  newLeft = clamp(newLeft, 0, Math.max(0, maxLeft));
+  newTop = clamp(newTop, 0, Math.max(0, maxTop));
+
+  consoleEl.style.left = newLeft + "px";
+  consoleEl.style.top = newTop + "px";
+});
+
+headerEl.addEventListener("pointerup", () => {
+  dragging = false;
+});
+
+headerEl.addEventListener("pointercancel", () => {
+  dragging = false;
+});
+
+
+
+
+
+
+
+
+
+console.log({ consoleEl, headerEl, resizer });

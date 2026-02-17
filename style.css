@@ -115,7 +115,7 @@ body {
 .console {
   position: absolute;
   left: 20px;
-  bottom: 14px;
+  top: 20px;
 
   width: min(640px, calc(100% - 40px));
   height: 190px;
