@@ -21,63 +21,116 @@
             <aside class="toolbox">
                 <div class="toolbox-title">Blocks</div>
 
-                
                 <div class="tool-item make-variable">
-                    <span class = "box-name">Создать переменную</span><br>
-                    <span class="string">Название:</span>
-                    <input type="text" value="" placeholder="Введите данные">
-                    <span class="string">Тип данных:</span>
-                    <select class="selection">
-                        <option value="int">Int</option>
-                        <option value="str">Str</option>
-                    </select><br>
-                    <span class="string">Значение:</span>
-                    <input type="text" value="">
+                    <div class="box-name">Создать переменную</div>
+
+                    <div class="row">
+                        <span class="string">Название:</span>
+                        <input type="text" placeholder="Введите данные">
+                    </div>
+
+                    <div class="row">
+                        <span class="string">Тип данных:</span>
+                        <select class="selection">
+                            <option value="int">Int</option>
+                            <option value="str">Str</option>
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <span class="string">Значение:</span>
+                        <input type="text" placeholder="Введите данные">
+                    </div>
                 </div>
                 <div class="if-else-row">
                     <div class="tool-item if-part">
-                        <span class="string" >if</span>
-                        <input type="text"></input>
-                        <span>:</span>
+                        <div class="row-inline">
+                            <span class="string">if</span>
+                            <input type="text", placeholder="Условие">
+                            <span class="string">:</span>
+                        </div>
                     </div>
 
                     <div class="tool-item else-part">
-                        <span class="">else:</span>
+                        <div class="row-inline">
+                            <span class="string">else:</span>
+                        </div>
+                    </div>
+                    <div class="tool-item end-part">
+                        <div class="row-inline">
+                            <span class="string">end</span>
+                        </div>
+                    </div>
+                </div>
+
+        
+                <div class="tool-item input-part">
+                    <div class="row-inline">
+                        <span class="string">input</span>
+                        <input type="text", placeholder="Куда вводим?">
+                    </div>
+                </div>
+                <div class="tool-item output-part">
+                    <div class="row-inline">
+                        <span class="string">output</span>
+                        <input type="text", placeholder="Что выводим?">
                     </div>
                 </div>
                 
+                <div class="tool-item while-part">
+                    <div class="row-inline">
+                        <span class="string">while</span>
+                        <input type="text", placeholder="Условие">
+                        <span class="string">:</span>
+                    </div>
+                </div>
+                <div class="tool-item for-part">
+                    <div class="row-inline">
+                        <span class="string">for</span>
+                        <input type="text", placeholder="i">
+                        <input type="text", placeholder="от">
+                        <input type="text", placeholder="до">
+                        <input type="text", placeholder="шаг">
+                        <span class="string">:</span>
+                    </div>
+                </div>
+
+                <div class="tool-item command-part">
+                    <div class="row-inline">
+                        <span class="string">Command</span>
+                        <input type="text", placeholder="Введите действие">
+                    </div>
+                </div>
+
             </aside>
 
             <section class="workspace-wrap">
+                <div class="workspace"></div>
+                <div class="canvas" id="canvas"></div>
+                
                 <div class="console" id="console">
-
                     <div class="console-header" id="consoleHeader">
-                        <div class="console-title">
-
+                    <div class="console-title">
                         <div class="console-dots">
-                            <button
+                        <button
                             class="dot dot-red"
                             id="consoleClose"
                             aria-label="Close console">
-                            </button>
+                        </button>
 
-                            <button
+                        <button
                             class="dot dot-yellow"
                             id="consoleHide"
                             aria-label="Hide console">
-                            </button>
+                        </button>
                         </div>
 
                         <span>Console</span>
-                        </div>
+                    </div>
 
-                        <div class="console-actions">
-                        <button
-                            class="console-btn"
-                            id="consoleClear">
-                            Clear
-                        </button>
-                        </div>
+                    <div class="console-actions">
+                        <button class="console-btn" id="consoleClear">Clear</button>
+                    </div>
                     </div>
 
                     <div class="console-body">
