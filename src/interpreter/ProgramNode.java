@@ -1,3 +1,4 @@
+// Запуск  всей программы
 package interpreter;
 
 import java.util.List;

@@ -1,3 +1,4 @@
+// Объявление переменных, например, var x, y;
 package interpreter;
 
 import java.util.List;

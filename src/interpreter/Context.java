@@ -1,3 +1,4 @@
+// Память для хранения переменных и их значений во время выполнения программы
 package interpreter;
 
 import java.util.HashMap;

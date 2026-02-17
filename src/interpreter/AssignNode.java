@@ -1,3 +1,4 @@
+// Присваивание значений переменным, например, x = 10;
 package interpreter;
 
 public class AssignNode extends StatementNode {
