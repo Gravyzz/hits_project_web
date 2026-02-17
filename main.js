@@ -192,11 +192,138 @@ headerEl.addEventListener("pointercancel", () => {
 });
 
 
+// ------- Drug tools --------
 
+// Drag & Drop для VibeBlock (кастомный)
+// - из toolbox: создаём копию и тащим (курсор держит ту же точку)
+// - на canvas: тащим уже размещённые блоки
+// - клики по input/select внутри блока НЕ запускают drag
 
+const canvas = document.getElementById('canvas');
+const toolbox = document.querySelector('.toolbox');
+const OVERSCROLL = 30; // насколько можно вылезать за края во время drag
 
+let active = null;
+let offsetX = 0;
+let offsetY = 0;
 
+function startDrag(block, clientX, clientY, presetOffsetX, presetOffsetY) {
+  active = block;
+  active.classList.add('dragging');
 
+  // используем смещение "где схватили"
+  if (typeof presetOffsetX === 'number' && typeof presetOffsetY === 'number') {
+    offsetX = presetOffsetX;
+    offsetY = presetOffsetY;
+  } else {
+    // для перетаскивания уже размещённого блока
+    const r = active.getBoundingClientRect();
+    offsetX = clientX - r.left;
+    offsetY = clientY - r.top;
+  }
 
+  // поднимаем блок наверх
+  active.style.zIndex = String(Date.now());
 
-console.log({ consoleEl, headerEl, resizer });
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+function onMove(e) {
+  if (!active) return;
+
+  const canvasRect = canvas.getBoundingClientRect();
+
+  const bw = active.offsetWidth;
+  const bh = active.offsetHeight;
+
+  let x = e.clientX - canvasRect.left - offsetX;
+  let y = e.clientY - canvasRect.top  - offsetY;
+
+  const minX = -OVERSCROLL;
+  const minY = -OVERSCROLL;
+  const maxX = canvas.clientWidth  - bw + OVERSCROLL;
+  const maxY = canvas.clientHeight - bh + OVERSCROLL;
+
+  // "мягкий" clamp: можно чуть выйти за границу
+  if (x < minX) x = minX;
+  if (y < minY) y = minY;
+  if (x > maxX) x = maxX;
+  if (y > maxY) y = maxY;
+
+  active.style.left = x + 'px';
+  active.style.top  = y + 'px';
+}
+
+function onUp() {
+  if (!active) return;
+
+  // Вернуть блок внутрь canvas (тут уже строго, без overscroll)
+  const bw = active.offsetWidth;
+  const bh = active.offsetHeight;
+
+  let x = parseFloat(active.style.left) || 0;
+  let y = parseFloat(active.style.top)  || 0;
+
+  const maxX = canvas.clientWidth  - bw;
+  const maxY = canvas.clientHeight - bh;
+
+  if (x < 0) x = 0;
+  if (y < 0) y = 0;
+  if (x > maxX) x = maxX;
+  if (y > maxY) y = maxY;
+
+  active.style.left = x + 'px';
+  active.style.top  = y + 'px';
+
+  active.classList.remove('dragging');
+  active = null;
+
+  document.removeEventListener('mousemove', onMove);
+  document.removeEventListener('mouseup', onUp);
+}
+
+// 1) Drag из TOOLBOX -> создаём копию в CANVAS
+toolbox.addEventListener('mousedown', (e) => {
+  const item = e.target.closest('.tool-item');
+  if (!item) return;
+
+  // не начинаем drag, если клик по интерактивным элементам
+  if (e.target.closest('input, select, textarea, button')) return;
+
+  e.preventDefault();
+
+  const clone = item.cloneNode(true);
+  clone.classList.add('placed-block');
+  clone.style.position = 'absolute';
+
+  // фиксируем ширину как в панели (чтобы не растягивался на canvas)
+  clone.style.width = item.getBoundingClientRect().width + 'px';
+
+  // смещение клика внутри оригинального элемента (где "схватили")
+  const itemRect = item.getBoundingClientRect();
+  const grabOffsetX = e.clientX - itemRect.left;
+  const grabOffsetY = e.clientY - itemRect.top;
+
+  canvas.appendChild(clone);
+
+  // ставим клон так, чтобы курсор держал ту же точку
+  const canvasRect = canvas.getBoundingClientRect();
+  clone.style.left = (e.clientX - canvasRect.left - grabOffsetX) + 'px';
+  clone.style.top  = (e.clientY - canvasRect.top  - grabOffsetY) + 'px';
+
+  // начинаем перетаскивание с уже известными offset'ами
+  startDrag(clone, e.clientX, e.clientY, grabOffsetX, grabOffsetY);
+});
+
+// 2) Drag по CANVAS -> двигаем существующий placed-block
+canvas.addEventListener('mousedown', (e) => {
+  const block = e.target.closest('.placed-block');
+  if (!block) return;
+
+  // позволяем ввод в input/select без драга
+  if (e.target.closest('input, select, textarea, button')) return;
+
+  e.preventDefault();
+  startDrag(block, e.clientX, e.clientY);
+});
