@@ -1,19 +1,18 @@
-// Объявление переменных, например, var x, y;
 package interpreter;
 
-import java.util.List;
+public class VarDeclNode implements StatementNode {
 
-public class VarDeclNode extends StatementNode {
-    private final List<String> names;
+    private String name;
+    private ExpressionNode expression;
 
-    public VarDeclNode(List<String> names) {
-        this.names = names;
+    public VarDeclNode(String name, ExpressionNode expression) {
+        this.name = name;
+        this.expression = expression;
     }
 
     @Override
-    public void execute(Context ctx) {
-        for (String name : names) {
-            ctx.declareVariable(name);
-        }
+    public void execute(Context context) {
+        int value = expression.evaluate(context);
+        context.declareVariable(name, value);
     }
 }

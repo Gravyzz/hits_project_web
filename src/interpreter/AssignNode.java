@@ -1,18 +1,18 @@
-// Присваивание значений переменным, например, x = 10;
 package interpreter;
 
-public class AssignNode extends StatementNode {
-    private final String target;
-    private final ExpressionNode expression;
+public class AssignNode implements StatementNode {
 
-    public AssignNode(String target, ExpressionNode expression) {
-        this.target = target;
+    private String name;
+    private ExpressionNode expression;
+
+    public AssignNode(String name, ExpressionNode expression) {
+        this.name = name;
         this.expression = expression;
     }
 
     @Override
-    public void execute(Context ctx) {
-        int value = expression.evaluate(ctx);
-        ctx.setVariable(target, value);
+    public void execute(Context context) {
+        int value = expression.evaluate(context);
+        context.setVariable(name, value);
     }
 }

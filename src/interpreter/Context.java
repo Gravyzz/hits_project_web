@@ -5,31 +5,32 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Context {
-    private final Map<String, Integer> variables = new HashMap<>();
 
-    // Объявляем новую переменную
-    public void declareVariable(String name) {
-        variables.put(name, 0); // по умолчанию 0
-    }
+    private Map<String, Integer> variables = new HashMap<>();
 
-    // Устанавливаем значение переменной
-    public void setVariable(String name, int value) {
-        if (!variables.containsKey(name)) {
-            throw new RuntimeException("Переменная " + name + " не объявлена");
+    public void declareVariable(String name, int value) {
+        if (variables.containsKey(name)) {
+            throw new RuntimeException("Переменная уже объявлена: " + name);
         }
         variables.put(name, value);
     }
 
-    // Получаем значение переменной
+    public void setVariable(String name, int value) {
+        if (!variables.containsKey(name)) {
+            throw new RuntimeException("Переменная не объявлена: " + name);
+        }
+        variables.put(name, value);
+    }
+
     public int getVariable(String name) {
         if (!variables.containsKey(name)) {
-            throw new RuntimeException("Переменная " + name + " не объявлена");
+            throw new RuntimeException("Переменная не объявлена: " + name);
         }
         return variables.get(name);
     }
 
-    // Для отладки
-    public void printVariables() {
-        System.out.println(variables);
+    @Override
+    public String toString() {
+        return variables.toString();
     }
 }
