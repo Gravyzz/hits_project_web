@@ -145,6 +145,17 @@ body {
   color: #1b1b1f;
 }
 
+.variable-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.5fr) minmax(0, 3fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.selection{
+  height: 100%;
+}
+
 .if-else-row {
   display: grid;
   grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 0.8fr);
@@ -390,4 +401,13 @@ body {
 .placed-block.selected{
   outline: 2px solid rgba(255,255,255,0.65);
   outline-offset: 2px;
+}
+
+.selection-box {
+  position: absolute;
+  border: 1px dashed #4da3ff;
+  background: rgba(77, 163, 255, 0.15);
+  pointer-events: none;
+  z-index: 9999;
+  pointer-events: none;
 }

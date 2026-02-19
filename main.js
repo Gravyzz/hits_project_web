@@ -8,8 +8,8 @@ const consoleHideBtn = document.getElementById("consoleHide");
 const consoleCloseBtn = document.getElementById("consoleClose");
 const workspaceWrap = consoleEl.parentElement;
 
-const GAP = 5;  
-const MAGNET = 70;    
+const GAP = 3;  
+const MAGNET = 40;    
 
 const consoleState = {
   visible: true,
@@ -171,7 +171,6 @@ headerEl.addEventListener("pointermove", (e) => {
   const dx = e.clientX - dragStart.pointerX;
   const dy = e.clientY - dragStart.pointerY;
 
-  // текущие координаты в координатах viewport -> переводим в координаты workspaceWrap
   let newLeft = (dragStart.startLeft - wrapRect.left) + dx;
   let newTop = (dragStart.startTop - wrapRect.top) + dy;
 
@@ -198,14 +197,9 @@ headerEl.addEventListener("pointercancel", () => {
 
 // ------- Drug tools --------
 
-// Drag & Drop для VibeBlock (кастомный)
-// - из toolbox: создаём копию и тащим (курсор держит ту же точку)
-// - на canvas: тащим уже размещённые блоки
-// - клики по input/select внутри блока НЕ запускают drag
-
 const canvas = document.getElementById('canvas');
 const toolbox = document.querySelector('.toolbox');
-const OVERSCROLL = 30; // насколько можно вылезать за края во время drag
+const OVERSCROLL = 300; // насколько можно вылезать за края во время drag
 
 let active = null;
 let offsetX = 0;
@@ -225,33 +219,58 @@ function distance(a, b) {
   return Math.hypot(dx, dy);
 }
 
-// Найти лучший "якорь" для active: куда его приклеить (под какой блок)
+// Найти лучший "якорь" для active: куда его приклеить
 function findBestSnapTarget(activeEl) {
   const { left: ax, top: ay } = getLeftTop(activeEl);
   const aW = activeEl.offsetWidth;
   const aH = activeEl.offsetHeight;
 
-  // точка "верх середина" активного блока
-  const aTopMid = { x: ax + aW / 2, y: ay };
+  const A = {
+    left: ax,
+    right: ax + aW,
+    top: ay,
+    bottom: ay + aH,
+    w: aW,
+    h: aH,
+  };
 
-  let best = null;
+  let best = null; // { el, d }
 
-  canvas.querySelectorAll('.placed-block').forEach((b) => {
+  canvas.querySelectorAll(".placed-block").forEach((b) => {
     if (b === activeEl) return;
 
     const { left: bx, top: by } = getLeftTop(b);
     const bW = b.offsetWidth;
     const bH = b.offsetHeight;
 
-    // точка "низ середина" блока-цели
-    const bBottomMid = { x: bx + bW / 2, y: by + bH };
+    const B = {
+      left: bx,
+      right: bx + bW,
+      top: by,
+      bottom: by + bH,
+      w: bW,
+      h: bH,
+    };
 
-    const d = distance(aTopMid, bBottomMid);
+    const overlapX = Math.min(A.right, B.right) - Math.max(A.left, B.left);
+    const overlapY = Math.min(A.bottom, B.bottom) - Math.max(A.top, B.top);
 
-    // плюс условие: по X должны быть более-менее в одной колонке
-    const xClose = Math.abs((ax + aW / 2) - (bx + bW / 2)) <= 80;
+    const minOverlapX = Math.min(20, A.w * 0.25, B.w * 0.25);
+    const minOverlapY = Math.min(20, A.h * 0.25, B.h * 0.25);
 
-    if (d <= MAGNET && xClose) {
+    let d = Infinity;
+
+    if (overlapX > minOverlapX) {
+      d = Math.min(d, Math.abs(A.bottom - B.top));
+      d = Math.min(d, Math.abs(A.top - B.bottom));
+    }
+
+    if (overlapY > minOverlapY) {
+      d = Math.min(d, Math.abs(A.right - B.left)); 
+      d = Math.min(d, Math.abs(A.left - B.right));
+    }
+
+    if (d <= MAGNET) {
       if (!best || d < best.d) best = { el: b, d };
     }
   });
@@ -263,9 +282,21 @@ function snapUnder(activeEl, targetEl) {
   const { left: bx, top: by } = getLeftTop(targetEl);
   const y = by + targetEl.offsetHeight + GAP;
 
-  // магнитим по X (колонка)
-  activeEl.style.left = bx + 'px';
-  activeEl.style.top  = y + 'px';
+  // магнитим по X
+  if (targetEl.classList.contains("end")){
+    activeEl.style.left = bx - 40 + 'px';
+    activeEl.style.top  = y + 'px';
+  }
+
+  else if (targetEl.classList.contains("start")){
+    activeEl.style.left = bx + 40 + 'px';
+    activeEl.style.top  = y + 'px';
+  }
+  else {
+    activeEl.style.left = bx + 'px';
+    activeEl.style.top  = y + 'px';
+  }
+
 }
 
 
@@ -274,18 +305,16 @@ function startDrag(block, clientX, clientY, presetOffsetX, presetOffsetY) {
   active = block;
   active.classList.add('dragging');
 
-  // используем смещение "где схватили"
   if (typeof presetOffsetX === 'number' && typeof presetOffsetY === 'number') {
     offsetX = presetOffsetX;
     offsetY = presetOffsetY;
   } else {
-    // для перетаскивания уже размещённого блока
+
     const r = active.getBoundingClientRect();
     offsetX = clientX - r.left;
     offsetY = clientY - r.top;
   }
 
-  // поднимаем блок наверх
   active.style.zIndex = String(Date.now());
 
   document.addEventListener('mousemove', onMove);
@@ -308,7 +337,6 @@ function onMove(e) {
   const maxX = canvas.clientWidth  - bw + OVERSCROLL;
   const maxY = canvas.clientHeight - bh + OVERSCROLL;
 
-  // "мягкий" clamp: можно чуть выйти за границу
   if (x < minX) x = minX;
   if (y < minY) y = minY;
   if (x > maxX) x = maxX;
@@ -321,7 +349,6 @@ function onMove(e) {
 function onUp() {
   if (!active) return;
 
-  // 1) Сначала строго возвращаем внутрь canvas
   const bw = active.offsetWidth;
   const bh = active.offsetHeight;
 
@@ -339,16 +366,13 @@ function onUp() {
   active.style.left = x + "px";
   active.style.top  = y + "px";
 
-  // 2) Потом пробуем магнит
   const target = findBestSnapTarget(active);
   if (target) {
     snapUnder(active, target);
 
-    // связь (опционально)
     target.dataset.next = active.dataset.id;
     active.dataset.prev = target.dataset.id;
 
-    // 3) на всякий случай ещё раз зажмём (если snap поставил близко к краю)
     const x2 = parseFloat(active.style.left) || 0;
     const y2 = parseFloat(active.style.top)  || 0;
 
@@ -366,12 +390,10 @@ function onUp() {
   document.removeEventListener("mouseup", onUp);
 }
 
-// 1) Drag из TOOLBOX -> создаём копию в CANVAS
 toolbox.addEventListener('mousedown', (e) => {
   const item = e.target.closest('.tool-item');
   if (!item) return;
 
-  // не начинаем drag, если клик по интерактивным элементам
   if (e.target.closest('input, select, textarea, button')) return;
 
   e.preventDefault();
@@ -384,31 +406,25 @@ toolbox.addEventListener('mousedown', (e) => {
   clone.dataset.prev = "";
   clone.dataset.next = "";  
 
-  // фиксируем ширину как в панели (чтобы не растягивался на canvas)
   clone.style.width = item.getBoundingClientRect().width + 'px';
 
-  // смещение клика внутри оригинального элемента (где "схватили")
   const itemRect = item.getBoundingClientRect();
   const grabOffsetX = e.clientX - itemRect.left;
   const grabOffsetY = e.clientY - itemRect.top;
 
   canvas.appendChild(clone);
 
-  // ставим клон так, чтобы курсор держал ту же точку
   const canvasRect = canvas.getBoundingClientRect();
   clone.style.left = (e.clientX - canvasRect.left - grabOffsetX) + 'px';
   clone.style.top  = (e.clientY - canvasRect.top  - grabOffsetY) + 'px';
 
-  // начинаем перетаскивание с уже известными offset'ами
   startDrag(clone, e.clientX, e.clientY, grabOffsetX, grabOffsetY);
 });
 
-// 2) Drag по CANVAS -> двигаем существующий placed-block
 canvas.addEventListener('mousedown', (e) => {
   const block = e.target.closest('.placed-block');
   if (!block) return;
 
-  // позволяем ввод в input/select без драга
   if (e.target.closest('input, select, textarea, button')) return;
 
   e.preventDefault();
@@ -426,14 +442,12 @@ let selectedBlock = null;
 canvas.addEventListener('mousedown', (e) => {
   const block = e.target.closest('.placed-block');
 
-  // кликнули в пустое место — снять выделение
   if (!block) {
     if (selectedBlock) selectedBlock.classList.remove('selected');
     selectedBlock = null;
     return;
   }
 
-  // если кликаем по input/select — не меняем выделение
   if (e.target.closest('input, select, textarea, button')) return;
 
   if (selectedBlock) selectedBlock.classList.remove('selected');
@@ -442,14 +456,11 @@ canvas.addEventListener('mousedown', (e) => {
 });
 
 // удаление по Delete/Backspace
-document.addEventListener('keydown', (e) => {
-  if (!selectedBlock) return;
-  if (e.key !== 'Delete' && e.key !== 'Backspace') return;
-
-  // чтобы случайно не удалить, пока печатаешь в input
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Delete" && e.key !== "Backspace") return;
   if (document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
 
-  selectedBlock.remove();
+  canvas.querySelectorAll(".placed-block.selected").forEach(b => b.remove());
   selectedBlock = null;
 });
 
@@ -468,3 +479,78 @@ deleteAllBtn.addEventListener("click", () => {
   blocks.forEach(block => block.remove());
   selectedBlock = null;
 });
+
+// ------ Выделение рамкой ---------
+let selectionBox = null;
+let startX = 0;
+let startY = 0;
+let isSelecting = false;
+
+canvas.addEventListener("mousedown", (e) => {
+  if (e.target !== canvas) return;
+
+  isSelecting = true;
+
+  const canvasRect = canvas.getBoundingClientRect();
+  startX = e.clientX - canvasRect.left;
+  startY = e.clientY - canvasRect.top;
+
+  selectionBox = document.createElement("div");
+  selectionBox.className = "selection-box";
+  selectionBox.style.left = startX + "px";
+  selectionBox.style.top = startY + "px";
+  selectionBox.style.width = "0px";
+  selectionBox.style.height = "0px";
+
+  canvas.appendChild(selectionBox);
+
+  document.addEventListener("mousemove", onSelectMove);
+  document.addEventListener("mouseup", onSelectUp);
+});
+
+function onSelectMove(e) {
+  if (!isSelecting || !selectionBox) return;
+
+  const canvasRect = canvas.getBoundingClientRect();
+  const currentX = e.clientX - canvasRect.left;
+  const currentY = e.clientY - canvasRect.top;
+
+  const width = currentX - startX;
+  const height = currentY - startY;
+
+  selectionBox.style.width = Math.abs(width) + "px";
+  selectionBox.style.height = Math.abs(height) + "px";
+  selectionBox.style.left = (width < 0 ? currentX : startX) + "px";
+  selectionBox.style.top  = (height < 0 ? currentY : startY) + "px";
+}
+
+function onSelectUp() {
+  if (!isSelecting || !selectionBox) return;
+
+  isSelecting = false;
+
+  const boxRect = selectionBox.getBoundingClientRect();
+  const blocks = canvas.querySelectorAll(".placed-block");
+
+  blocks.forEach(block => {
+    const r = block.getBoundingClientRect();
+
+    const intersects = !(
+      r.right < boxRect.left ||
+      r.left > boxRect.right ||
+      r.bottom < boxRect.top ||
+      r.top > boxRect.bottom
+    );
+
+    block.classList.toggle("selected", intersects);
+  });
+
+  selectionBox.remove();
+  selectionBox = null;
+
+  document.removeEventListener("mousemove", onSelectMove);
+  document.removeEventListener("mouseup", onSelectUp);
+}
+
+
+// ------- Перенос группы -----------

@@ -22,28 +22,18 @@
                 <div class="toolbox-title">Blocks</div>
 
                 <div class="tool-item make-variable" draggable="true">
-                    <div class="box-name">Создать переменную</div>
-
-                    <div class="row">
-                        <span class="string">Название:</span>
-                        <input type="text" placeholder="Введите данные">
-                    </div>
-
-                    <div class="row">
-                        <span class="string">Тип данных:</span>
+                    <div class="variable-row">
                         <select class="selection">
-                            <option value="int">Int</option>
-                            <option value="str">Str</option>
+                            <option value="int">int</option>
+                            <option value="str">str</option>
+                            <input type="text" placeholder="Имя">
+                            <input type="text" placeholder="Введите знач.">
                         </select>
                     </div>
 
-                    <div class="row">
-                        <span class="string">Значение:</span>
-                        <input type="text" placeholder="Введите данные">
-                    </div>
                 </div>
                 <div class="if-else-row">
-                    <div class="tool-item if-part" draggable="true">
+                    <div class="tool-item if-part start" draggable="true">
                         <div class="row-inline">
                             <span class="string">if</span>
                             <input type="text", placeholder="Условие">
@@ -51,12 +41,12 @@
                         </div>
                     </div>
 
-                    <div class="tool-item else-part" draggable="true">
+                    <div class="tool-item else-part start" draggable="true">
                         <div class="row-inline">
                             <span class="string">else:</span>
                         </div>
                     </div>
-                    <div class="tool-item end-part-if" draggable="true">
+                    <div class="tool-item end-part-if end" draggable="true">
                         <div class="row-inline">
                             <span class="string">end</span>
                         </div>
@@ -79,7 +69,7 @@
                 
 
                 <div class="while-end-row">
-                    <div class="tool-item while-part" draggable="true">
+                    <div class="tool-item while-part start" draggable="true">
                         <div class="row-inline">
                             <span class="string">while</span>
                             <input type="text", placeholder="Условие">
@@ -87,14 +77,14 @@
                         </div>
                     </div>
 
-                    <div class="tool-item end-part-for" draggable="true">
+                    <div class="tool-item end-part-for end" draggable="true">
                         <div class="row-inline">
                             <span class="string">end</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="tool-item for-part" draggable="true">
+                <div class="tool-item for-part start" draggable="true">
                     <div class="row-inline">
                         <span class="string">for</span>
                         <input type="text", placeholder="i">
