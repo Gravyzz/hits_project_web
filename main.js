@@ -1,3 +1,4 @@
+// ================== Console ==================
 const consoleEl = document.getElementById("console");
 const consoleTextEl = document.getElementById("consoleText");
 const headerEl = document.getElementById("consoleHeader");
@@ -8,8 +9,8 @@ const consoleHideBtn = document.getElementById("consoleHide");
 const consoleCloseBtn = document.getElementById("consoleClose");
 const workspaceWrap = consoleEl.parentElement;
 
-const GAP = 3;  
-const MAGNET = 40;    
+const GAP = 3;
+const MAGNET = 40;
 
 const consoleState = {
   visible: true,
@@ -18,11 +19,8 @@ const consoleState = {
 
 function renderConsole() {
   consoleTextEl.textContent = consoleState.logs.join("\n");
-
   consoleEl.classList.toggle("is-hidden", !consoleState.visible);
-  if (consoleState.logs.length === 0) {
-    consoleTextEl.textContent = "";
-  }
+  if (consoleState.logs.length === 0) consoleTextEl.textContent = "";
 }
 
 export function consoleLog(msg) {
@@ -51,6 +49,19 @@ function showConsole() {
   renderConsole();
 }
 
+// --- FIX: posState/applyConsolePos (чтобы clampConsoleToWorkspace не падал) ---
+const posState = {
+  left: parseFloat(consoleEl.style.left) || 0,
+  top: parseFloat(consoleEl.style.top) || 0,
+};
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+function applyConsolePos() {
+  consoleEl.style.left = posState.left + "px";
+  consoleEl.style.top = posState.top + "px";
+}
+
 function clampConsoleToWorkspace() {
   const wrapRect = workspaceWrap.getBoundingClientRect();
   const maxLeft = wrapRect.width - consoleEl.offsetWidth;
@@ -62,40 +73,22 @@ function clampConsoleToWorkspace() {
 }
 
 // --- Events ---
-consoleClearBtn.addEventListener("click", () => {
-  clearLogs();
-});
+consoleClearBtn.addEventListener("click", clearLogs);
+consoleHideBtn.addEventListener("click", hideKeepLogs);
+consoleCloseBtn.addEventListener("click", closeClearAndHide);
 
-consoleHideBtn.addEventListener("click", () => {
-  hideKeepLogs();
-});
-
-consoleCloseBtn.addEventListener("click", () => {
-  closeClearAndHide();
-});
-
-// Кнопка Console сверху
 consoleBtnTop.addEventListener("click", () => {
-  if (consoleState.visible) {
-    hideKeepLogs();
-  } else {
-    showConsole();
-  }
+  if (consoleState.visible) hideKeepLogs();
+  else showConsole();
 });
 
 renderConsole();
 
-
-// ----Размеры консоли-----
-
+// ---- Размеры консоли -----
 const sizeState = {
   width: consoleEl.offsetWidth,
   height: consoleEl.offsetHeight,
 };
-
-function clamp(v, min, max) {
-  return Math.max(min, Math.min(max, v));
-}
 
 function applyConsoleSize() {
   consoleEl.style.width = sizeState.width + "px";
@@ -110,12 +103,7 @@ resizer.addEventListener("pointerdown", (e) => {
   resizing = true;
   resizer.setPointerCapture(e.pointerId);
 
-  start = {
-    x: e.clientX,
-    y: e.clientY,
-    w: sizeState.width,
-    h: sizeState.height,
-  };
+  start = { x: e.clientX, y: e.clientY, w: sizeState.width, h: sizeState.height };
 });
 
 resizer.addEventListener("pointermove", (e) => {
@@ -131,96 +119,72 @@ resizer.addEventListener("pointermove", (e) => {
   clampConsoleToWorkspace();
 });
 
-resizer.addEventListener("pointerup", () => {
-  resizing = false;
-});
-
-resizer.addEventListener("pointercancel", () => {
-  resizing = false;
-});
+resizer.addEventListener("pointerup", () => (resizing = false));
+resizer.addEventListener("pointercancel", () => (resizing = false));
 
 applyConsoleSize();
 
-// -----Перенос консоли-------
-let dragging = false;
+// ----- Перенос консоли -----
+let draggingConsole = false;
 let dragStart = null;
 
 headerEl.addEventListener("pointerdown", (e) => {
   e.preventDefault();
+  if (e.target.closest("button")) return;
 
-  const target = e.target;
-  if (target.closest("button")) return;
-
-  dragging = true;
+  draggingConsole = true;
   headerEl.setPointerCapture(e.pointerId);
 
   const rect = consoleEl.getBoundingClientRect();
-  dragStart = {
-    pointerX: e.clientX,
-    pointerY: e.clientY,
-    startLeft: rect.left,
-    startTop: rect.top,
-  };
+  dragStart = { pointerX: e.clientX, pointerY: e.clientY, startLeft: rect.left, startTop: rect.top };
 });
 
 headerEl.addEventListener("pointermove", (e) => {
-  if (!dragging) return;
+  if (!draggingConsole) return;
 
   const wrapRect = workspaceWrap.getBoundingClientRect();
-
   const dx = e.clientX - dragStart.pointerX;
   const dy = e.clientY - dragStart.pointerY;
 
-  let newLeft = (dragStart.startLeft - wrapRect.left) + dx;
-  let newTop = (dragStart.startTop - wrapRect.top) + dy;
+  let newLeft = dragStart.startLeft - wrapRect.left + dx;
+  let newTop = dragStart.startTop - wrapRect.top + dy;
 
-  // ограничения, чтобы консоль не уехала за границы
   const maxLeft = wrapRect.width - consoleEl.offsetWidth;
   const maxTop = wrapRect.height - consoleEl.offsetHeight;
 
-  newLeft = clamp(newLeft, 0, Math.max(0, maxLeft));
-  newTop = clamp(newTop, 0, Math.max(0, maxTop));
-
-  consoleEl.style.left = newLeft + "px";
-  consoleEl.style.top = newTop + "px";
+  posState.left = clamp(newLeft, 0, Math.max(0, maxLeft));
+  posState.top = clamp(newTop, 0, Math.max(0, maxTop));
+  applyConsolePos();
 });
 
-headerEl.addEventListener("pointerup", () => {
-  dragging = false;
-});
+headerEl.addEventListener("pointerup", () => (draggingConsole = false));
+headerEl.addEventListener("pointercancel", () => (draggingConsole = false));
 
-headerEl.addEventListener("pointercancel", () => {
-  dragging = false;
-});
-
-
-
-// ------- Drug tools --------
-
-const canvas = document.getElementById('canvas');
-const toolbox = document.querySelector('.toolbox');
-const OVERSCROLL = 300; // насколько можно вылезать за края во время drag
+// ================== Drag tools / Canvas ==================
+const canvas = document.getElementById("canvas");
+const toolbox = document.querySelector(".toolbox");
+const OVERSCROLL = 300;
 
 let active = null;
 let offsetX = 0;
 let offsetY = 0;
 
 
+
 function getLeftTop(el) {
   return {
     left: parseFloat(el.style.left) || 0,
-    top:  parseFloat(el.style.top)  || 0,
+    top: parseFloat(el.style.top) || 0,
   };
 }
 
-function distance(a, b) {
-  const dx = a.x - b.x;
-  const dy = a.y - b.y;
-  return Math.hypot(dx, dy);
+function getZ(el) {
+  const z = parseInt(el.style.zIndex, 10);
+  return Number.isFinite(z) ? z : 0;
 }
 
-// Найти лучший "якорь" для active: куда его приклеить
-function findBestSnapTarget(activeEl) {
+// ---- Snap helpers ----
+function findBestSnapTarget(activeEl, excludeSet = null) {
   const { left: ax, top: ay } = getLeftTop(activeEl);
   const aW = activeEl.offsetWidth;
   const aH = activeEl.offsetHeight;
@@ -234,10 +198,11 @@ function findBestSnapTarget(activeEl) {
     h: aH,
   };
 
-  let best = null; // { el, d }
+  let best = null;
 
   canvas.querySelectorAll(".placed-block").forEach((b) => {
     if (b === activeEl) return;
+    if (excludeSet && excludeSet.has(b)) return; // ✅ не магнитимся к своим
 
     const { left: bx, top: by } = getLeftTop(b);
     const bW = b.offsetWidth;
@@ -264,9 +229,8 @@ function findBestSnapTarget(activeEl) {
       d = Math.min(d, Math.abs(A.bottom - B.top));
       d = Math.min(d, Math.abs(A.top - B.bottom));
     }
-
     if (overlapY > minOverlapY) {
-      d = Math.min(d, Math.abs(A.right - B.left)); 
+      d = Math.min(d, Math.abs(A.right - B.left));
       d = Math.min(d, Math.abs(A.left - B.right));
     }
 
@@ -277,39 +241,44 @@ function findBestSnapTarget(activeEl) {
 
   return best ? best.el : null;
 }
-
 function snapUnder(activeEl, targetEl) {
   const { left: bx, top: by } = getLeftTop(targetEl);
   const y = by + targetEl.offsetHeight + GAP;
 
-  // магнитим по X
-  if (targetEl.classList.contains("end")){
-    activeEl.style.left = bx - 40 + 'px';
-    activeEl.style.top  = y + 'px';
+  if (targetEl.classList.contains("end")) {
+    activeEl.style.left = bx - 40 + "px";
+    activeEl.style.top = y + "px";
+  } else if (targetEl.classList.contains("start")) {
+    activeEl.style.left = bx + 40 + "px";
+    activeEl.style.top = y + "px";
+  } else {
+    activeEl.style.left = bx + "px";
+    activeEl.style.top = y + "px";
   }
-
-  else if (targetEl.classList.contains("start")){
-    activeEl.style.left = bx + 40 + 'px';
-    activeEl.style.top  = y + 'px';
-  }
-  else {
-    activeEl.style.left = bx + 'px';
-    activeEl.style.top  = y + 'px';
-  }
-
 }
 
 
+function getSnapPos(activeEl, targetEl) {
+  const { left: bx, top: by } = getLeftTop(targetEl);
+  const y = by + targetEl.offsetHeight + GAP;
 
+  let x = bx;
+
+  if (targetEl.classList.contains("end")) x = bx - 40;
+  else if (targetEl.classList.contains("start")) x = bx + 40;
+
+  return { left: x, top: y };
+}
+
+// ---- Single drag ----
 function startDrag(block, clientX, clientY, presetOffsetX, presetOffsetY) {
   active = block;
-  active.classList.add('dragging');
+  active.classList.add("dragging");
 
-  if (typeof presetOffsetX === 'number' && typeof presetOffsetY === 'number') {
+  if (typeof presetOffsetX === "number" && typeof presetOffsetY === "number") {
     offsetX = presetOffsetX;
     offsetY = presetOffsetY;
   } else {
-
     const r = active.getBoundingClientRect();
     offsetX = clientX - r.left;
     offsetY = clientY - r.top;
@@ -317,33 +286,30 @@ function startDrag(block, clientX, clientY, presetOffsetX, presetOffsetY) {
 
   active.style.zIndex = String(Date.now());
 
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
+  document.addEventListener("mousemove", onMove);
+  document.addEventListener("mouseup", onUp);
 }
 
 function onMove(e) {
   if (!active) return;
 
   const canvasRect = canvas.getBoundingClientRect();
-
   const bw = active.offsetWidth;
   const bh = active.offsetHeight;
 
   let x = e.clientX - canvasRect.left - offsetX;
-  let y = e.clientY - canvasRect.top  - offsetY;
+  let y = e.clientY - canvasRect.top - offsetY;
 
   const minX = -OVERSCROLL;
   const minY = -OVERSCROLL;
-  const maxX = canvas.clientWidth  - bw + OVERSCROLL;
+  const maxX = canvas.clientWidth - bw + OVERSCROLL;
   const maxY = canvas.clientHeight - bh + OVERSCROLL;
 
-  if (x < minX) x = minX;
-  if (y < minY) y = minY;
-  if (x > maxX) x = maxX;
-  if (y > maxY) y = maxY;
+  x = Math.max(minX, Math.min(maxX, x));
+  y = Math.max(minY, Math.min(maxY, y));
 
-  active.style.left = x + 'px';
-  active.style.top  = y + 'px';
+  active.style.left = x + "px";
+  active.style.top = y + "px";
 }
 
 function onUp() {
@@ -353,34 +319,33 @@ function onUp() {
   const bh = active.offsetHeight;
 
   let x = parseFloat(active.style.left) || 0;
-  let y = parseFloat(active.style.top)  || 0;
+  let y = parseFloat(active.style.top) || 0;
 
-  const maxX = canvas.clientWidth  - bw;
+  const maxX = canvas.clientWidth - bw;
   const maxY = canvas.clientHeight - bh;
 
-  if (x < 0) x = 0;
-  if (y < 0) y = 0;
-  if (x > maxX) x = maxX;
-  if (y > maxY) y = maxY;
+  x = clamp(x, 0, Math.max(0, maxX));
+  y = clamp(y, 0, Math.max(0, maxY));
 
   active.style.left = x + "px";
-  active.style.top  = y + "px";
+  active.style.top = y + "px";
 
   const target = findBestSnapTarget(active);
   if (target) {
     snapUnder(active, target);
 
+    // ВАЖНО: одиночный drag может обновлять связи (если тебе нужно)
     target.dataset.next = active.dataset.id;
     active.dataset.prev = target.dataset.id;
 
     const x2 = parseFloat(active.style.left) || 0;
-    const y2 = parseFloat(active.style.top)  || 0;
+    const y2 = parseFloat(active.style.top) || 0;
 
-    const maxX2 = canvas.clientWidth  - active.offsetWidth;
+    const maxX2 = canvas.clientWidth - active.offsetWidth;
     const maxY2 = canvas.clientHeight - active.offsetHeight;
 
-    active.style.left = Math.max(0, Math.min(x2, maxX2)) + "px";
-    active.style.top  = Math.max(0, Math.min(y2, maxY2)) + "px";
+    active.style.left = clamp(x2, 0, Math.max(0, maxX2)) + "px";
+    active.style.top = clamp(y2, 0, Math.max(0, maxY2)) + "px";
   }
 
   active.classList.remove("dragging");
@@ -390,23 +355,23 @@ function onUp() {
   document.removeEventListener("mouseup", onUp);
 }
 
-toolbox.addEventListener('mousedown', (e) => {
-  const item = e.target.closest('.tool-item');
+// ---- Drag from toolbox -> clone to canvas ----
+toolbox.addEventListener("mousedown", (e) => {
+  const item = e.target.closest(".tool-item");
   if (!item) return;
-
-  if (e.target.closest('input, select, textarea, button')) return;
+  if (e.target.closest("input, select, textarea, button")) return;
 
   e.preventDefault();
 
   const clone = item.cloneNode(true);
-  clone.classList.add('placed-block');
-  clone.style.position = 'absolute';
-  
+  clone.classList.add("placed-block");
+  clone.style.position = "absolute";
+
   clone.dataset.id = crypto.randomUUID();
   clone.dataset.prev = "";
-  clone.dataset.next = "";  
+  clone.dataset.next = "";
 
-  clone.style.width = item.getBoundingClientRect().width + 'px';
+  clone.style.width = item.getBoundingClientRect().width + "px";
 
   const itemRect = item.getBoundingClientRect();
   const grabOffsetX = e.clientX - itemRect.left;
@@ -415,79 +380,84 @@ toolbox.addEventListener('mousedown', (e) => {
   canvas.appendChild(clone);
 
   const canvasRect = canvas.getBoundingClientRect();
-  clone.style.left = (e.clientX - canvasRect.left - grabOffsetX) + 'px';
-  clone.style.top  = (e.clientY - canvasRect.top  - grabOffsetY) + 'px';
+  clone.style.left = e.clientX - canvasRect.left - grabOffsetX + "px";
+  clone.style.top = e.clientY - canvasRect.top - grabOffsetY + "px";
+
+  // при создании — выделим только его
+  clearAllSelected();
+  clone.classList.add("selected");
+  selectedBlock = clone;
 
   startDrag(clone, e.clientX, e.clientY, grabOffsetX, grabOffsetY);
 });
 
-canvas.addEventListener('mousedown', (e) => {
-  const block = e.target.closest('.placed-block');
-  if (!block) return;
-
-  if (e.target.closest('input, select, textarea, button')) return;
-
-  e.preventDefault();
-  startDrag(block, e.clientX, e.clientY);
-});
-
-
-
-
-
-//------block delete--------
+// ================== Selection (клик/рамка) ==================
 let selectedBlock = null;
+let suppressClick = false;
 
-// выбор блока кликом
-canvas.addEventListener('mousedown', (e) => {
-  const block = e.target.closest('.placed-block');
+function clearAllSelected() {
+  canvas.querySelectorAll(".placed-block.selected").forEach((b) => b.classList.remove("selected"));
+}
+
+// --- Клик по canvas: выбор блоков ---
+// Shift+клик: добавить/убрать из выделения
+// Клик без Shift: выделить только этот блок
+// Клик по пустому месту: снять выделение
+canvas.addEventListener("click", (e) => {
+  if (suppressClick) return;
+  if (e.target.closest("input, select, textarea, button")) return;
+
+  const block = e.target.closest(".placed-block");
 
   if (!block) {
-    if (selectedBlock) selectedBlock.classList.remove('selected');
+    clearAllSelected();
     selectedBlock = null;
     return;
   }
 
-  if (e.target.closest('input, select, textarea, button')) return;
+  if (e.shiftKey) {
+    block.classList.toggle("selected");
+    selectedBlock = block.classList.contains("selected") ? block : selectedBlock;
+    return;
+  }
 
-  if (selectedBlock) selectedBlock.classList.remove('selected');
+  clearAllSelected();
+  block.classList.add("selected");
   selectedBlock = block;
-  selectedBlock.classList.add('selected');
 });
 
-// удаление по Delete/Backspace
+// --- Delete / Backspace: удалить все selected ---
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Delete" && e.key !== "Backspace") return;
   if (document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) return;
 
-  canvas.querySelectorAll(".placed-block.selected").forEach(b => b.remove());
+  canvas.querySelectorAll(".placed-block.selected").forEach((b) => b.remove());
   selectedBlock = null;
 });
 
-//--------- delete all ----------
+// --- Delete All ---
 const deleteAllBtn = document.getElementById("deleteAllBtn");
-
-deleteAllBtn.addEventListener("click", () => {
+deleteAllBtn?.addEventListener("click", () => {
   const blocks = canvas.querySelectorAll(".placed-block");
-
   if (blocks.length === 0) return;
 
   const confirmed = confirm("Are you sure you want to delete all blocks?");
-
   if (!confirmed) return;
 
-  blocks.forEach(block => block.remove());
+  blocks.forEach((b) => b.remove());
   selectedBlock = null;
 });
 
-// ------ Выделение рамкой ---------
+// --- Выделение рамкой (marquee) ---
 let selectionBox = null;
 let startX = 0;
 let startY = 0;
 let isSelecting = false;
 
 canvas.addEventListener("mousedown", (e) => {
+  // стартуем рамку только по пустому месту canvas
   if (e.target !== canvas) return;
+  if (e.button !== 0) return;
 
   isSelecting = true;
 
@@ -501,6 +471,9 @@ canvas.addEventListener("mousedown", (e) => {
   selectionBox.style.top = startY + "px";
   selectionBox.style.width = "0px";
   selectionBox.style.height = "0px";
+
+  // если не держим Shift — начинаем новое выделение
+  if (!e.shiftKey) clearAllSelected();
 
   canvas.appendChild(selectionBox);
 
@@ -521,7 +494,7 @@ function onSelectMove(e) {
   selectionBox.style.width = Math.abs(width) + "px";
   selectionBox.style.height = Math.abs(height) + "px";
   selectionBox.style.left = (width < 0 ? currentX : startX) + "px";
-  selectionBox.style.top  = (height < 0 ? currentY : startY) + "px";
+  selectionBox.style.top = (height < 0 ? currentY : startY) + "px";
 }
 
 function onSelectUp() {
@@ -532,17 +505,15 @@ function onSelectUp() {
   const boxRect = selectionBox.getBoundingClientRect();
   const blocks = canvas.querySelectorAll(".placed-block");
 
-  blocks.forEach(block => {
+  blocks.forEach((block) => {
     const r = block.getBoundingClientRect();
-
     const intersects = !(
       r.right < boxRect.left ||
       r.left > boxRect.right ||
       r.bottom < boxRect.top ||
       r.top > boxRect.bottom
     );
-
-    block.classList.toggle("selected", intersects);
+    if (intersects) block.classList.add("selected");
   });
 
   selectionBox.remove();
@@ -550,7 +521,194 @@ function onSelectUp() {
 
   document.removeEventListener("mousemove", onSelectMove);
   document.removeEventListener("mouseup", onSelectUp);
+
+  suppressClick = true;
+  setTimeout(() => (suppressClick = false), 0);
 }
 
+// ================== Group drag (исправленный) ==================
+let dragGroup = null; // [{ el, startLeft, startTop }]
+let groupLeader = null;
+let leaderGrabOffset = { x: 0, y: 0 };
+let isGroupDrag = false;
 
-// ------- Перенос группы -----------
+function collectSelectedGroup(leaderEl) {
+  const selected = Array.from(canvas.querySelectorAll(".placed-block.selected"));
+  if (selected.length === 0) {
+    return [{ el: leaderEl, startLeft: getLeftTop(leaderEl).left, startTop: getLeftTop(leaderEl).top }];
+  }
+
+  if (!leaderEl.classList.contains("selected")) {
+    clearAllSelected();
+    leaderEl.classList.add("selected");
+    return [{ el: leaderEl, startLeft: getLeftTop(leaderEl).left, startTop: getLeftTop(leaderEl).top }];
+  }
+
+  return selected.map((el) => {
+    const { left, top } = getLeftTop(el);
+    return { el, startLeft: left, startTop: top };
+  });
+}
+
+function clampGroupToCanvas(group) {
+  let minL = Infinity, minT = Infinity, maxR = -Infinity, maxB = -Infinity;
+
+  group.forEach(({ el }) => {
+    const { left, top } = getLeftTop(el);
+    minL = Math.min(minL, left);
+    minT = Math.min(minT, top);
+    maxR = Math.max(maxR, left + el.offsetWidth);
+    maxB = Math.max(maxB, top + el.offsetHeight);
+  });
+
+  let shiftX = 0;
+  let shiftY = 0;
+
+  if (minL < 0) shiftX = -minL;
+  if (minT < 0) shiftY = -minT;
+
+  const overflowX = maxR - canvas.clientWidth;
+  const overflowY = maxB - canvas.clientHeight;
+
+  if (overflowX > 0) shiftX -= overflowX;
+  if (overflowY > 0) shiftY -= overflowY;
+
+  if (shiftX !== 0 || shiftY !== 0) {
+    group.forEach(({ el }) => {
+      const p = getLeftTop(el);
+      el.style.left = p.left + shiftX + "px";
+      el.style.top = p.top + shiftY + "px";
+    });
+  }
+}
+
+function startGroupDrag(leader, clientX, clientY) {
+  groupLeader = leader;
+  isGroupDrag = true;
+
+  dragGroup = collectSelectedGroup(leader);
+
+  // FIX: поднимаем группу, сохраняя порядок внутри (zIndex)
+  const base = Date.now();
+  dragGroup
+    .map((item) => ({ item, z: getZ(item.el) }))
+    .sort((a, b) => a.z - b.z)
+    .forEach((wrap, i) => {
+      wrap.item.el.style.zIndex = String(base + i);
+    });
+
+  const r = leader.getBoundingClientRect();
+  leaderGrabOffset.x = clientX - r.left;
+  leaderGrabOffset.y = clientY - r.top;
+
+  document.addEventListener("mousemove", onGroupMove);
+  document.addEventListener("mouseup", onGroupUp);
+}
+
+function onGroupMove(e) {
+  if (!isGroupDrag || !dragGroup || !groupLeader) return;
+
+  const canvasRect = canvas.getBoundingClientRect();
+  const leaderItem = dragGroup.find(i => i.el === groupLeader);
+  if (!leaderItem) return;
+
+  // 1) обычное движение группы по dx/dy
+  const leaderX = e.clientX - canvasRect.left - leaderGrabOffset.x;
+  const leaderY = e.clientY - canvasRect.top  - leaderGrabOffset.y;
+
+  const dx = leaderX - leaderItem.startLeft;
+  const dy = leaderY - leaderItem.startTop;
+
+  dragGroup.forEach(item => {
+    item.el.style.left = (item.startLeft + dx) + "px";
+    item.el.style.top  = (item.startTop + dy) + "px";
+  });
+
+  // 2) ✅ ЖИВОЙ МАГНИТ: ищем цель, исключая блоки своей группы
+  const exclude = new Set(dragGroup.map(x => x.el));
+  const target = findBestSnapTarget(groupLeader, exclude);
+
+  if (target) {
+    const before = getLeftTop(groupLeader);
+    const snapPos = getSnapPos(groupLeader, target);
+
+    // применяем snap лидеру
+    groupLeader.style.left = snapPos.left + "px";
+    groupLeader.style.top  = snapPos.top + "px";
+
+    // тем же delta двигаем остальных
+    const after = getLeftTop(groupLeader);
+    const ddx = after.left - before.left;
+    const ddy = after.top  - before.top;
+
+    dragGroup.forEach(item => {
+      if (item.el === groupLeader) return;
+      const p = getLeftTop(item.el);
+      item.el.style.left = (p.left + ddx) + "px";
+      item.el.style.top  = (p.top  + ddy) + "px";
+    });
+  }
+}
+
+function onGroupUp() {
+  if (!isGroupDrag || !dragGroup || !groupLeader) return;
+
+  // 1) clamp всей группы
+  clampGroupToCanvas(dragGroup);
+
+  // 2) магнитим ТОЛЬКО лидера
+  const before = getLeftTop(groupLeader);
+  const exclude = new Set(dragGroup.map(x => x.el));
+  const target = findBestSnapTarget(groupLeader, exclude);
+
+  if (target) {
+    snapUnder(groupLeader, target);
+
+    // 3) сместить остальных на delta лидера
+    const after = getLeftTop(groupLeader);
+    const ddx = after.left - before.left;
+    const ddy = after.top - before.top;
+
+    dragGroup.forEach((item) => {
+      if (item.el === groupLeader) return;
+      const p = getLeftTop(item.el);
+      item.el.style.left = p.left + ddx + "px";
+      item.el.style.top = p.top + ddy + "px";
+    });
+
+    clampGroupToCanvas(dragGroup);
+
+    // FIX: НЕ трогаем dataset.prev/next для группы (иначе ломается цепочка)
+    // Если захочешь — сделаем отдельную “перестройку связей” корректно.
+  }
+
+  isGroupDrag = false;
+  dragGroup = null;
+  groupLeader = null;
+
+  document.removeEventListener("mousemove", onGroupMove);
+  document.removeEventListener("mouseup", onGroupUp);
+}
+
+// ================== Единственный обработчик mousedown для drag по canvas ==================
+canvas.addEventListener("mousedown", (e) => {
+  // если сейчас рисуем рамку — здесь ничего не делаем
+  if (isSelecting) return;
+
+  const block = e.target.closest(".placed-block");
+  if (!block) return;
+
+  if (e.target.closest("input, select, textarea, button")) return;
+
+  e.preventDefault();
+
+  // если блок выделен — тащим группу, иначе тащим одиночный
+  if (block.classList.contains("selected")) {
+    startGroupDrag(block, e.clientX, e.clientY);
+  } else {
+    clearAllSelected();
+    block.classList.add("selected");
+    selectedBlock = block;
+    startDrag(block, e.clientX, e.clientY);
+  }
+});
