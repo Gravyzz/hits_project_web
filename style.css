@@ -100,7 +100,7 @@ body {
 }
 
 .tool-item .string {
-  opacity: 0.9;
+  opacity: 1;
   font-size: 12px;
   font-weight: bold;
 }
@@ -203,6 +203,18 @@ body {
 .command-part {
   background: #153ae1;
   min-height: 52px;
+}
+
+.array-part {
+  background: #f13b1b;
+  min-height: 52px;
+}
+
+.arr-row {
+  display: grid;
+  grid-template-columns: minmax(0, 0.4fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 2fr);
+  gap: 8px;
+  align-items: center;
 }
 
 .row-inline {
