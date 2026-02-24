@@ -46,6 +46,7 @@ body {
 }
 
 .btn-run { background: #2dd4bf; }
+.btn-debug { background: #00bcd4; }
 .btn-danger { background: #ef4444; color: white; }
 
 .app {
@@ -100,7 +101,7 @@ body {
 }
 
 .tool-item .string {
-  opacity: 1;
+  opacity: 0.9;
   font-size: 12px;
   font-weight: bold;
 }
@@ -205,16 +206,21 @@ body {
   min-height: 52px;
 }
 
-.array-part {
-  background: #f13b1b;
+.func-def-part,
+.return-part {
+  background: #e91e63;
   min-height: 52px;
 }
 
-.arr-row {
+.func-row {
   display: grid;
-  grid-template-columns: minmax(0, 0.4fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 2fr);
-  gap: 8px;
-  align-items: center;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.func-row > .tool-item {
+  min-width: 0;
 }
 
 .row-inline {
@@ -422,4 +428,73 @@ body {
   pointer-events: none;
   z-index: 9999;
   pointer-events: none;
+}
+
+/* Error highlighting for blocks */
+.placed-block.error {
+  outline: 3px solid #ef4444 !important;
+  outline-offset: 2px;
+  animation: errorGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes errorGlow {
+  from {
+    box-shadow: 0 0 5px #ef4444;
+  }
+  to {
+    box-shadow: 0 0 15px #ef4444, 0 0 25px rgba(239, 68, 68, 0.5);
+  }
+}
+/* Delete button on blocks */
+.block-delete-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: #ef4444;
+  color: white;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.block-delete-btn:hover {
+  background: #dc2626;
+  transform: scale(1.15);
+}
+
+.placed-block:hover .block-delete-btn {
+  display: flex;
+}
+
+/* Debug mode highlighting */
+.placed-block.debug-current {
+  outline: 3px solid #00bcd4 !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 15px rgba(0, 188, 212, 0.5);
+}
+
+/* Array block */
+.make-array {
+  background: #e67e22;
+  color: #1b1b1f;
+  border-color: rgba(0, 0, 0, 0.25);
+}
+
+.make-array .string {
+  color: #1b1b1f;
+  font-weight: bold;
+}
+
+.make-array input {
+  max-width: 80px;
 }

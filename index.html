@@ -13,6 +13,9 @@
 
             <div class="actions">
                 <button class="btn btn-run">Run</button>
+                <button class="btn btn-debug" id="debugBtn">🐛 Debug</button>
+                <button class="btn" id="saveBtn">💾 Save</button>
+                <button class="btn" id="loadBtn">📂 Load</button>
                 <button class="btn btn-danger" id="deleteAllBtn">Delete all</button>
                 <button class="btn" id="consoleBtn">Console</button>
             </div>
@@ -25,10 +28,24 @@
                     <div class="variable-row">
                         <select class="selection">
                             <option value="int">int</option>
+                            <option value="float">float</option>
                             <option value="str">str</option>
-                            <input type="text" placeholder="Имя">
-                            <input type="text" placeholder="Введите знач.">
                         </select>
+                        <input type="text" placeholder="Имя">
+                        <input type="text" placeholder="Введите знач.">
+                    </div>
+
+                </div>
+
+                <div class="tool-item make-array" draggable="true">
+                    <div class="row-inline">
+                        <span class="string">array</span>
+                        <input type="text" placeholder="Имя">
+                        <span class="string">[</span>
+                        <input type="text" placeholder="Размер">
+                        <span class="string">]</span>
+                        <span class="string">=</span>
+                        <input type="text" placeholder="Значения: 1,2,3">
                     </div>
                 </div>
 
@@ -36,7 +53,7 @@
                     <div class="tool-item if-part start" draggable="true">
                         <div class="row-inline">
                             <span class="string">if</span>
-                            <input type="text", placeholder="Условие">
+                            <input type="text" placeholder="Условие">
                             <span class="string">:</span>
                         </div>
                     </div>
@@ -57,13 +74,13 @@
                 <div class="tool-item input-part" draggable="true">
                     <div class="row-inline">
                         <span class="string">input</span>
-                        <input type="text", placeholder="Куда вводим?">
+                        <input type="text" placeholder="Куда вводим?">
                     </div>
                 </div>
                 <div class="tool-item output-part" draggable="true">
                     <div class="row-inline">
                         <span class="string">output</span>
-                        <input type="text", placeholder="Что выводим?">
+                        <input type="text" placeholder="Что выводим?">
                     </div>
                 </div>
                 
@@ -72,7 +89,7 @@
                     <div class="tool-item while-part start" draggable="true">
                         <div class="row-inline">
                             <span class="string">while</span>
-                            <input type="text", placeholder="Условие">
+                            <input type="text" placeholder="Условие">
                             <span class="string">:</span>
                         </div>
                     </div>
@@ -87,10 +104,10 @@
                 <div class="tool-item for-part start" draggable="true">
                     <div class="row-inline">
                         <span class="string">for</span>
-                        <input type="text", placeholder="i">
-                        <input type="text", placeholder="от">
-                        <input type="text", placeholder="до">
-                        <input type="text", placeholder="шаг">
+                        <input type="text" placeholder="i">
+                        <input type="text" placeholder="от">
+                        <input type="text" placeholder="до">
+                        <input type="text" placeholder="шаг">
                         <span class="string">:</span>
                     </div>
                 </div>
@@ -98,16 +115,24 @@
                 <div class="tool-item command-part" draggable="true">
                     <div class="row-inline">
                         <span class="string">Command</span>
-                        <input type="text", placeholder="Введите действие">
+                        <input type="text" placeholder="Введите действие">
                     </div>
                 </div>
 
-                <div class="tool-item array-part" draggable="true">
-                    <div class="arr-row">
-                        <span class="string">arr</span>
-                        <input type="text", placeholder="name">
-                        <input type="text", placeholder="len">
-                        <input type="text", placeholder="elements">
+                <div class="func-row">
+                    <div class="tool-item func-def-part start" draggable="true">
+                        <div class="row-inline">
+                            <span class="string">func</span>
+                            <input type="text" placeholder="имя(арг1, арг2)">
+                            <span class="string">:</span>
+                        </div>
+                    </div>
+
+                    <div class="tool-item return-part" draggable="true">
+                        <div class="row-inline">
+                            <span class="string">return</span>
+                            <input type="text" placeholder="Значение">
+                        </div>
                     </div>
                 </div>
 
@@ -159,6 +184,6 @@
         </main>
     </div>
 
-    <script type="module" src="/main.js"></script>
+    <script type="module" src="/src/main.ts"></script>
 </body> 
 </html>
