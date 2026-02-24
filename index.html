@@ -13,56 +13,177 @@
 
             <div class="actions">
                 <button class="btn btn-run">Run</button>
-                <button class="btn btn-danger">Delete all</button>
-                <button class="btn">Console</button>
+                <button class="btn btn-debug" id="debugBtn">🐛 Debug</button>
+                <button class="btn" id="saveBtn">💾 Save</button>
+                <button class="btn" id="loadBtn">📂 Load</button>
+                <button class="btn btn-danger" id="deleteAllBtn">Delete all</button>
+                <button class="btn" id="consoleBtn">Console</button>
             </div>
         </header>
         <main class="main">
             <aside class="toolbox">
                 <div class="toolbox-title">Blocks</div>
 
-                
-                <div class="tool-item">
-                    <span class = "box-name">Создать переменную</span><br>
-                    <span class="string">Название:</span>
-                    <input type="text" value="">
-                    <span class="string">Тип данных:</span>
-                    <select class="selection">
-                        <option value="int">Int</option>
-                        <option value="str">Str</option>
-                    </select><br>
-                    <span class="string">Значение:</span>
-                    <input type="text" value="">
+                <div class="tool-item make-variable" draggable="true">
+                    <div class="variable-row">
+                        <select class="selection">
+                            <option value="int">int</option>
+                            <option value="float">float</option>
+                            <option value="str">str</option>
+                        </select>
+                        <input type="text" placeholder="Имя">
+                        <input type="text" placeholder="Введите знач.">
+                    </div>
+
+                </div>
+
+                <div class="tool-item make-array" draggable="true">
+                    <div class="row-inline">
+                        <span class="string">array</span>
+                        <input type="text" placeholder="Имя">
+                        <span class="string">[</span>
+                        <input type="text" placeholder="Размер">
+                        <span class="string">]</span>
+                        <span class="string">=</span>
+                        <input type="text" placeholder="Значения: 1,2,3">
+                    </div>
+                </div>
+
+                <div class="if-else-row">
+                    <div class="tool-item if-part start" draggable="true">
+                        <div class="row-inline">
+                            <span class="string">if</span>
+                            <input type="text" placeholder="Условие">
+                            <span class="string">:</span>
+                        </div>
+                    </div>
+
+                    <div class="tool-item else-part start" draggable="true">
+                        <div class="row-inline">
+                            <span class="string">else:</span>
+                        </div>
+                    </div>
+                    <div class="tool-item end-part-if end" draggable="true">
+                        <div class="row-inline">
+                            <span class="string">end</span>
+                        </div>
+                    </div>
+                </div>
+
+        
+                <div class="tool-item input-part" draggable="true">
+                    <div class="row-inline">
+                        <span class="string">input</span>
+                        <input type="text" placeholder="Куда вводим?">
+                    </div>
+                </div>
+                <div class="tool-item output-part" draggable="true">
+                    <div class="row-inline">
+                        <span class="string">output</span>
+                        <input type="text" placeholder="Что выводим?">
+                    </div>
                 </div>
                 
-                
+
+                <div class="while-end-row">
+                    <div class="tool-item while-part start" draggable="true">
+                        <div class="row-inline">
+                            <span class="string">while</span>
+                            <input type="text" placeholder="Условие">
+                            <span class="string">:</span>
+                        </div>
+                    </div>
+
+                    <div class="tool-item end-part-for end" draggable="true">
+                        <div class="row-inline">
+                            <span class="string">end</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tool-item for-part start" draggable="true">
+                    <div class="row-inline">
+                        <span class="string">for</span>
+                        <input type="text" placeholder="i">
+                        <input type="text" placeholder="от">
+                        <input type="text" placeholder="до">
+                        <input type="text" placeholder="шаг">
+                        <span class="string">:</span>
+                    </div>
+                </div>
+
+                <div class="tool-item command-part" draggable="true">
+                    <div class="row-inline">
+                        <span class="string">Command</span>
+                        <input type="text" placeholder="Введите действие">
+                    </div>
+                </div>
+
+                <div class="func-row">
+                    <div class="tool-item func-def-part start" draggable="true">
+                        <div class="row-inline">
+                            <span class="string">func</span>
+                            <input type="text" placeholder="имя(арг1, арг2)">
+                            <span class="string">:</span>
+                        </div>
+                    </div>
+
+                    <div class="tool-item return-part" draggable="true">
+                        <div class="row-inline">
+                            <span class="string">return</span>
+                            <input type="text" placeholder="Значение">
+                        </div>
+                    </div>
+                </div>
+
             </aside>
 
             <section class="workspace-wrap">
+                <div class="workspace"></div>
+                <div class="canvas" id="canvas"></div>
+
                 <div class="console" id="console">
-                    <div class="console-header">
-                        <div class="console-title">
-                        <span class="console-dots">
-                            <button class="dot dot-red" id="consoleClose" aria-label="Close (clear + hide)"></button>
-                            <button class="dot dot-yellow" id="consoleHide" aria-label="Hide (keep logs)"></button>
-                        </span>
-                        Console
+                    <div class="console-header" id="consoleHeader">
+                    <div class="console-title">
+                        <div class="console-dots">
+                        <button
+                            class="dot dot-red"
+                            id="consoleClose"
+                            aria-label="Close console">
+                        </button>
+
+                        <button
+                            class="dot dot-yellow"
+                            id="consoleHide"
+                            aria-label="Hide console">
+                        </button>
                         </div>
 
-                        <div class="console-actions">
-                        <button class="console-btn" id="consoleClear" aria-label="Clear console">Clear</button>
-                        </div>
+                        <span>Console</span>
+                    </div>
+
+                    <div class="console-actions">
+                        <button class="console-btn" id="consoleClear">Clear</button>
+                    </div>
                     </div>
 
                     <div class="console-body">
-                        <pre class="console-text" id="consoleText">Ready…</pre>
+                        <pre class="console-text" id="consoleText">
+                    Ready…
+                        </pre>
                     </div>
+
+                    <div
+                        class="console-resizer"
+                        id="consoleResizer"
+                        aria-label="Resize console">
                     </div>
-                <div class="workspace"></div>
+
+                </div>
             </section>
         </main>
     </div>
 
-    <script type="module" src="/main.js"></script>
+    <script type="module" src="/src/main.ts"></script>
 </body> 
 </html>
