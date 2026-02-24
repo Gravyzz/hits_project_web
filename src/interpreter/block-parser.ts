@@ -1,0 +1,218 @@
+import { ASTNode } from '../types/blocks.js';
+
+interface RawBlock {
+  type: string;
+  element: HTMLElement;
+  y: number;
+}
+
+export class BlockParser {
+  static parseFromCanvas(canvas: HTMLElement): ASTNode[] {
+    const elements = Array.from(canvas.querySelectorAll('.placed-block')) as HTMLElement[];
+    
+    const rawBlocks: RawBlock[] = elements.map(el => ({
+      type: this.getBlockType(el),
+      element: el,
+      y: parseFloat(el.style.top) || el.getBoundingClientRect().top,
+    })).sort((a, b) => a.y - b.y);
+
+    return this.buildAST(rawBlocks, 0, rawBlocks.length);
+  }
+
+  private static getBlockType(el: HTMLElement): string {
+    if (el.classList.contains('make-variable')) return 'variable';
+    if (el.classList.contains('make-array')) return 'array-block';
+    if (el.classList.contains('if-part')) return 'if';
+    if (el.classList.contains('else-part')) return 'else';
+    if (el.classList.contains('while-part')) return 'while';
+    if (el.classList.contains('for-part')) return 'for';
+    if (el.classList.contains('input-part')) return 'input';
+    if (el.classList.contains('output-part')) return 'output';
+    if (el.classList.contains('command-part')) return 'command';
+    if (el.classList.contains('func-def-part')) return 'func-def';
+    if (el.classList.contains('return-part')) return 'return';
+    if (el.classList.contains('end-part-if') || el.classList.contains('end-part-for')) return 'end';
+    return 'unknown';
+  }
+
+  private static buildAST(blocks: RawBlock[], start: number, end: number): ASTNode[] {
+    const nodes: ASTNode[] = [];
+    let i = start;
+
+    while (i < end) {
+      const b = blocks[i];
+
+      if (b.type === 'variable') {
+        nodes.push(this.parseVariable(b.element));
+        i++;
+      } else if (b.type === 'array-block') {
+        const arrName = this.getInput(b.element, 'Имя');
+        const arrSize = this.getInput(b.element, 'Размер');
+        const arrValues = this.getInput(b.element, 'Значения: 1,2,3');
+        nodes.push({ kind: 'array', name: arrName, size: arrSize, initialValues: arrValues || undefined, element: b.element });
+        i++;
+      } else if (b.type === 'if') {
+        const { node, nextIndex } = this.parseIf(blocks, i, end);
+        nodes.push(node);
+        i = nextIndex;
+      } else if (b.type === 'while') {
+        const { node, nextIndex } = this.parseWhile(blocks, i, end);
+        nodes.push(node);
+        i = nextIndex;
+      } else if (b.type === 'for') {
+        const { node, nextIndex } = this.parseFor(blocks, i, end);
+        nodes.push(node);
+        i = nextIndex;
+      } else if (b.type === 'input') {
+        const inp = this.getInput(b.element, 'Куда вводим?');
+        nodes.push({ kind: 'input', variable: inp, element: b.element });
+        i++;
+      } else if (b.type === 'output') {
+        const expr = this.getInput(b.element, 'Что выводим?');
+        nodes.push({ kind: 'output', expression: expr, element: b.element });
+        i++;
+      } else if (b.type === 'command') {
+        const cmd = this.getInput(b.element, 'Введите действие');
+        const eqIdx = cmd.indexOf('=');
+        if (eqIdx > 0 && cmd[eqIdx - 1] !== '!' && cmd[eqIdx - 1] !== '<' && cmd[eqIdx - 1] !== '>' && (eqIdx + 1 >= cmd.length || cmd[eqIdx + 1] !== '=')) {
+          const varPart = cmd.substring(0, eqIdx).trim();
+          const exprPart = cmd.substring(eqIdx + 1).trim();
+          nodes.push({ kind: 'assignment', variable: varPart, expression: exprPart, element: b.element });
+        } else {
+          nodes.push({ kind: 'command', command: cmd, element: b.element });
+        }
+        i++;
+      } else if (b.type === 'func-def') {
+        const { node, nextIndex } = this.parseFunction(blocks, i, end);
+        nodes.push(node);
+        i = nextIndex;
+      } else if (b.type === 'return') {
+        const returnValue = this.getInput(b.element, 'Значение');
+        nodes.push({ kind: 'return', returnValue, element: b.element });
+        i++;
+      } else {
+        i++; // skip end/else/unknown
+      }
+    }
+
+    return nodes;
+  }
+
+  private static parseVariable(el: HTMLElement): ASTNode {
+    const nameStr = this.getInput(el, 'Имя');
+    const valStr = this.getInput(el, 'Введите знач.');
+    const sel = el.querySelector('select') as HTMLSelectElement | null;
+    const dataType = (sel?.value || 'int') as 'int' | 'float' | 'str';
+
+    const arrMatch = nameStr.match(/^(\w+)\[(.+)\]$/);
+    if (arrMatch) {
+      return { kind: 'array', name: arrMatch[1], size: arrMatch[2], element: el };
+    }
+
+    const names = nameStr.split(',').map(n => n.trim()).filter(n => n);
+    return { kind: 'variable', dataType, names, initialValue: valStr || null, element: el };
+  }
+
+  private static parseFunction(blocks: RawBlock[], start: number, end: number): { node: ASTNode; nextIndex: number } {
+    const funcBlock = blocks[start];
+    const funcDecl = this.getInput(funcBlock.element, 'имя(арг1, арг2)');
+    
+    // Parse function name and parameters
+    const match = funcDecl.match(/^(\w+)\s*\(([^)]*)\)$/);
+    if (!match) {
+      throw new Error(`Неверный формат объявления функции: ${funcDecl}`);
+    }
+    
+    const functionName = match[1];
+    const paramString = match[2].trim();
+    const parameters = paramString ? paramString.split(',').map(p => p.trim()) : [];
+    
+    // Find the matching end block
+    const { bodyEnd } = this.findEnd(blocks, start, end);
+    const body = this.buildAST(blocks, start + 1, bodyEnd);
+    
+    return {
+      node: { kind: 'func-def', functionName, parameters, body, element: funcBlock.element },
+      nextIndex: bodyEnd < end ? bodyEnd + 1 : bodyEnd,
+    };
+  }
+
+  private static parseIf(blocks: RawBlock[], start: number, end: number): { node: ASTNode; nextIndex: number } {
+    const ifBlock = blocks[start];
+    const condition = this.getInput(ifBlock.element, 'Условие');
+    let depth = 1;
+    let elseIdx = -1;
+    let endIdx = -1;
+
+    for (let i = start + 1; i < end; i++) {
+      const t = blocks[i].type;
+      if (t === 'if' || t === 'while' || t === 'for') depth++;
+      else if (t === 'end') {
+        depth--;
+        if (depth === 0) { endIdx = i; break; }
+      } else if (t === 'else' && depth === 1) {
+        elseIdx = i;
+      }
+    }
+
+    if (endIdx === -1) endIdx = end;
+
+    let thenBody: ASTNode[];
+    let elseBodyNodes: ASTNode[] | undefined;
+
+    if (elseIdx >= 0) {
+      thenBody = this.buildAST(blocks, start + 1, elseIdx);
+      elseBodyNodes = this.buildAST(blocks, elseIdx + 1, endIdx);
+    } else {
+      thenBody = this.buildAST(blocks, start + 1, endIdx);
+    }
+
+    return {
+      node: { kind: 'if', condition, body: thenBody, elseBody: elseBodyNodes, element: ifBlock.element },
+      nextIndex: endIdx < end ? endIdx + 1 : endIdx,
+    };
+  }
+
+  private static parseWhile(blocks: RawBlock[], start: number, end: number): { node: ASTNode; nextIndex: number } {
+    const whileBlock = blocks[start];
+    const condition = this.getInput(whileBlock.element, 'Условие');
+    const { bodyEnd } = this.findEnd(blocks, start, end);
+    const body = this.buildAST(blocks, start + 1, bodyEnd);
+    return {
+      node: { kind: 'while', condition, body, element: whileBlock.element },
+      nextIndex: bodyEnd < end ? bodyEnd + 1 : bodyEnd,
+    };
+  }
+
+  private static parseFor(blocks: RawBlock[], start: number, end: number): { node: ASTNode; nextIndex: number } {
+    const forBlock = blocks[start];
+    const inputs = forBlock.element.querySelectorAll('input') as NodeListOf<HTMLInputElement>;
+    const variable = inputs[0]?.value || 'i';
+    const from = inputs[1]?.value || '0';
+    const to = inputs[2]?.value || '10';
+    const step = inputs[3]?.value || '1';
+    const { bodyEnd } = this.findEnd(blocks, start, end);
+    const body = this.buildAST(blocks, start + 1, bodyEnd);
+    return {
+      node: { kind: 'for', variable, from, to, step, body, element: forBlock.element },
+      nextIndex: bodyEnd < end ? bodyEnd + 1 : bodyEnd,
+    };
+  }
+
+  private static findEnd(blocks: RawBlock[], start: number, end: number): { bodyEnd: number } {
+    let depth = 1;
+    for (let i = start + 1; i < end; i++) {
+      const t = blocks[i].type;
+      if (t === 'if' || t === 'while' || t === 'for') depth++;
+      else if (t === 'end') { depth--; if (depth === 0) return { bodyEnd: i }; }
+    }
+    return { bodyEnd: end };
+  }
+
+  static getInput(el: HTMLElement, placeholder: string): string {
+    const inp = Array.from(el.querySelectorAll('input')).find(
+      i => (i as HTMLInputElement).placeholder === placeholder
+    ) as HTMLInputElement | undefined;
+    return inp?.value?.trim() ?? '';
+  }
+}
