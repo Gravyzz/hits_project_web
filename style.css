@@ -238,6 +238,20 @@ body {
   padding: 4px 8px;
 }
 
+.tool-item .box-name {
+    font-size: 16px;
+    text-align: center;
+    display: block;
+    margin-bottom: -5px;
+}
+
+.selection {
+    width: 68%;
+    text-align: center;
+}
+
+
+
 .workspace-wrap {
   position: relative;
   height: 100%;
