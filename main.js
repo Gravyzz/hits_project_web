@@ -49,7 +49,6 @@ function showConsole() {
   renderConsole();
 }
 
-// --- FIX: posState/applyConsolePos (чтобы clampConsoleToWorkspace не падал) ---
 const posState = {
   left: parseFloat(consoleEl.style.left) || 0,
   top: parseFloat(consoleEl.style.top) || 0,
@@ -169,8 +168,6 @@ let active = null;
 let offsetX = 0;
 let offsetY = 0;
 
-
-
 function getLeftTop(el) {
   return {
     left: parseFloat(el.style.left) || 0,
@@ -202,7 +199,7 @@ function findBestSnapTarget(activeEl, excludeSet = null) {
 
   canvas.querySelectorAll(".placed-block").forEach((b) => {
     if (b === activeEl) return;
-    if (excludeSet && excludeSet.has(b)) return; // ✅ не магнитимся к своим
+    if (excludeSet && excludeSet.has(b)) return;
 
     const { left: bx, top: by } = getLeftTop(b);
     const bW = b.offsetWidth;
@@ -257,18 +254,6 @@ function snapUnder(activeEl, targetEl) {
   }
 }
 
-
-function getSnapPos(activeEl, targetEl) {
-  const { left: bx, top: by } = getLeftTop(targetEl);
-  const y = by + targetEl.offsetHeight + GAP;
-
-  let x = bx;
-
-  if (targetEl.classList.contains("end")) x = bx - 40;
-  else if (targetEl.classList.contains("start")) x = bx + 40;
-
-  return { left: x, top: y };
-}
 
 // ---- Single drag ----
 function startDrag(block, clientX, clientY, presetOffsetX, presetOffsetY) {
@@ -334,7 +319,6 @@ function onUp() {
   if (target) {
     snapUnder(active, target);
 
-    // ВАЖНО: одиночный drag может обновлять связи (если тебе нужно)
     target.dataset.next = active.dataset.id;
     active.dataset.prev = target.dataset.id;
 
@@ -383,7 +367,6 @@ toolbox.addEventListener("mousedown", (e) => {
   clone.style.left = e.clientX - canvasRect.left - grabOffsetX + "px";
   clone.style.top = e.clientY - canvasRect.top - grabOffsetY + "px";
 
-  // при создании — выделим только его
   clearAllSelected();
   clone.classList.add("selected");
   selectedBlock = clone;
@@ -391,7 +374,7 @@ toolbox.addEventListener("mousedown", (e) => {
   startDrag(clone, e.clientX, e.clientY, grabOffsetX, grabOffsetY);
 });
 
-// ================== Selection (клик/рамка) ==================
+// ================== Selection ==================
 let selectedBlock = null;
 let suppressClick = false;
 
@@ -448,7 +431,7 @@ deleteAllBtn?.addEventListener("click", () => {
   selectedBlock = null;
 });
 
-// --- Выделение рамкой (marquee) ---
+// --- Выделение рамкой ---
 let selectionBox = null;
 let startX = 0;
 let startY = 0;
@@ -526,11 +509,17 @@ function onSelectUp() {
   setTimeout(() => (suppressClick = false), 0);
 }
 
-// ================== Group drag (исправленный) ==================
+// ================== Group drag ==================
 let dragGroup = null; // [{ el, startLeft, startTop }]
 let groupLeader = null;
 let leaderGrabOffset = { x: 0, y: 0 };
 let isGroupDrag = false;
+let groupRAF = 0;
+let lastGroupEvent = null;
+let groupDx = 0;
+let groupDy = 0;
+
+
 
 function collectSelectedGroup(leaderEl) {
   const selected = Array.from(canvas.querySelectorAll(".placed-block.selected"));
@@ -588,7 +577,6 @@ function startGroupDrag(leader, clientX, clientY) {
 
   dragGroup = collectSelectedGroup(leader);
 
-  // FIX: поднимаем группу, сохраняя порядок внутри (zIndex)
   const base = Date.now();
   dragGroup
     .map((item) => ({ item, z: getZ(item.el) }))
@@ -607,56 +595,77 @@ function startGroupDrag(leader, clientX, clientY) {
 
 function onGroupMove(e) {
   if (!isGroupDrag || !dragGroup || !groupLeader) return;
+  lastGroupEvent = e;
 
+  if (groupRAF) return;
+  groupRAF = requestAnimationFrame(applyGroupMoveFrame);
+}
+
+function getSnapPosVirtual(activeEl, target, virtualPos) {
+  const aW = activeEl.offsetWidth;
+  const aH = activeEl.offsetHeight;
+
+  const t = getLeftTop(target);
+
+  return {
+    left: t.left,
+    top:  t.top + target.offsetHeight + GAP 
+  };
+
+}
+
+function applyGroupMoveFrame() {
+  groupRAF = 0;
+  if (!lastGroupEvent || !isGroupDrag || !dragGroup || !groupLeader) return;
+
+  const e = lastGroupEvent;
   const canvasRect = canvas.getBoundingClientRect();
+
   const leaderItem = dragGroup.find(i => i.el === groupLeader);
   if (!leaderItem) return;
 
-  // 1) обычное движение группы по dx/dy
-  const leaderX = e.clientX - canvasRect.left - leaderGrabOffset.x;
-  const leaderY = e.clientY - canvasRect.top  - leaderGrabOffset.y;
+  const rawLeaderLeft = e.clientX - canvasRect.left - leaderGrabOffset.x;
+  const rawLeaderTop  = e.clientY - canvasRect.top  - leaderGrabOffset.y;
 
-  const dx = leaderX - leaderItem.startLeft;
-  const dy = leaderY - leaderItem.startTop;
+  const rawDx = rawLeaderLeft - leaderItem.startLeft;
+  const rawDy = rawLeaderTop  - leaderItem.startTop;
 
-  dragGroup.forEach(item => {
-    item.el.style.left = (item.startLeft + dx) + "px";
-    item.el.style.top  = (item.startTop + dy) + "px";
-  });
+  groupDx = rawDx;
+  groupDy = rawDy;
 
-  // 2) ✅ ЖИВОЙ МАГНИТ: ищем цель, исключая блоки своей группы
   const exclude = new Set(dragGroup.map(x => x.el));
   const target = findBestSnapTarget(groupLeader, exclude);
 
   if (target) {
-    const before = getLeftTop(groupLeader);
-    const snapPos = getSnapPos(groupLeader, target);
-
-    // применяем snap лидеру
-    groupLeader.style.left = snapPos.left + "px";
-    groupLeader.style.top  = snapPos.top + "px";
-
-    // тем же delta двигаем остальных
-    const after = getLeftTop(groupLeader);
-    const ddx = after.left - before.left;
-    const ddy = after.top  - before.top;
-
-    dragGroup.forEach(item => {
-      if (item.el === groupLeader) return;
-      const p = getLeftTop(item.el);
-      item.el.style.left = (p.left + ddx) + "px";
-      item.el.style.top  = (p.top  + ddy) + "px";
+    const snapPos = getSnapPosVirtual(groupLeader, target, {
+      left: leaderItem.startLeft + rawDx,
+      top:  leaderItem.startTop  + rawDy
     });
+
+    const snapDx = snapPos.left - (leaderItem.startLeft + rawDx);
+    const snapDy = snapPos.top  - (leaderItem.startTop  + rawDy);
+
+    groupDx = rawDx + snapDx;
+    groupDy = rawDy + snapDy;
+  }
+
+  for (const item of dragGroup) {
+    item.el.style.left = (item.startLeft + groupDx) + "px";
+    item.el.style.top  = (item.startTop  + groupDy) + "px";
   }
 }
 
 function onGroupUp() {
+  if (groupRAF) {
+    cancelAnimationFrame(groupRAF);
+    groupRAF = 0;
+  }
+  lastGroupEvent = null;
+
   if (!isGroupDrag || !dragGroup || !groupLeader) return;
 
-  // 1) clamp всей группы
   clampGroupToCanvas(dragGroup);
 
-  // 2) магнитим ТОЛЬКО лидера
   const before = getLeftTop(groupLeader);
   const exclude = new Set(dragGroup.map(x => x.el));
   const target = findBestSnapTarget(groupLeader, exclude);
@@ -664,7 +673,6 @@ function onGroupUp() {
   if (target) {
     snapUnder(groupLeader, target);
 
-    // 3) сместить остальных на delta лидера
     const after = getLeftTop(groupLeader);
     const ddx = after.left - before.left;
     const ddy = after.top - before.top;
@@ -678,8 +686,6 @@ function onGroupUp() {
 
     clampGroupToCanvas(dragGroup);
 
-    // FIX: НЕ трогаем dataset.prev/next для группы (иначе ломается цепочка)
-    // Если захочешь — сделаем отдельную “перестройку связей” корректно.
   }
 
   isGroupDrag = false;
@@ -690,9 +696,7 @@ function onGroupUp() {
   document.removeEventListener("mouseup", onGroupUp);
 }
 
-// ================== Единственный обработчик mousedown для drag по canvas ==================
 canvas.addEventListener("mousedown", (e) => {
-  // если сейчас рисуем рамку — здесь ничего не делаем
   if (isSelecting) return;
 
   const block = e.target.closest(".placed-block");
@@ -702,7 +706,6 @@ canvas.addEventListener("mousedown", (e) => {
 
   e.preventDefault();
 
-  // если блок выделен — тащим группу, иначе тащим одиночный
   if (block.classList.contains("selected")) {
     startGroupDrag(block, e.clientX, e.clientY);
   } else {
