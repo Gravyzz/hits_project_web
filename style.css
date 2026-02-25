@@ -1,5 +1,5 @@
 * { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; }
+html, body { height: 100%; margin: 0; overflow: hidden; }
 
 :root {
   --bg: #1b1b1f;
@@ -50,21 +50,29 @@ body {
 .btn-danger { background: #ef4444; color: white; }
 
 .app {
-  height: 100%;
-  display: grid;
-  grid-template-rows: 56px 1fr;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .main {
-  height: 100%;
-  display: grid;
-  grid-template-columns: 280px 1fr;
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden; /* дочерние элементы скроллят сами */
+  min-height: 0;
 }
 
 .toolbox {
+  width: 280px;
+  flex-shrink: 0;     /* не сжимается */
+  height: 100%;
   background: linear-gradient(180deg, #19b7b7, #0ea5a5);
   padding: 12px;
-  overflow: auto;
+  overflow-y: auto;   /* своя прокрутка если блоков много */
+  overflow-x: hidden;
+  /* toolbox никогда не скроллится вместе с рабочей областью */
 }
 
 .toolbox-title {
@@ -75,7 +83,6 @@ body {
 
 /* Базовая карточка блока */
 .tool-item {
-  width: 100%;
   background: rgba(0, 0, 0, .25);
   font-size: 12px;
   color: white;
@@ -86,9 +93,23 @@ body {
   border-radius: 12px;
   cursor: grab;
   margin-bottom: 15px;
-
   display: grid;
   gap: 8px;
+}
+
+/* В toolbox — фиксированная ширина, текст не вылезает */
+.toolbox .tool-item {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* На canvas — ширина по содержимому, растёт вместе с инпутами */
+.canvas .placed-block.tool-item,
+.placed-block.tool-item {
+  width: fit-content;
+  max-width: none;
+  overflow: visible;
 }
 
 .tool-item:active { cursor: grabbing; }
@@ -104,6 +125,8 @@ body {
   opacity: 0.9;
   font-size: 12px;
   font-weight: bold;
+  white-space: nowrap;
+  flex-shrink: 0; /* метки не сжимаются — сжимаются только инпуты */
 }
 
 .tool-item .row {
@@ -121,7 +144,33 @@ body {
   padding: 6px 8px;
   font-size: 12px;
   outline: none;
+  transition: width 0.1s;
+}
+
+/* В toolbox — инпуты сжимаются по flex, текст обрезается */
+.toolbox .tool-item input {
   min-width: 0;
+  width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* На canvas — авторесайз */
+.placed-block input {
+  min-width: 60px;
+  width: 60px;
+  max-width: 400px;
+  transition: width 0.1s;
+}
+
+/* Авто-расширение инпутов внутри размещённых блоков */
+.placed-block input {
+  min-width: 60px;
+  width: 60px;
+  max-width: 400px;
+  transition: width 0.1s;
 }
 
 .tool-item input::placeholder {
@@ -149,8 +198,15 @@ body {
 .variable-row {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.5fr) minmax(0, 3fr);
-  gap: 12px;
+  gap: 8px;
   align-items: start;
+}
+
+/* В toolbox — инпуты variable-row заполняют свою grid-ячейку */
+.toolbox .variable-row input {
+  width: 100%;
+  min-width: 0;
+  flex: none; /* grid-элемент, не flex */
 }
 
 .selection{
@@ -226,48 +282,76 @@ body {
 .row-inline {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  overflow: hidden;   /* строка не выходит за блок */
+  min-width: 0;
 }
 
-.row-inline input {
+/* Инпуты в toolbox — компактные, не расширяются */
+.toolbox .row-inline input {
   flex: 1;
   min-width: 0;
-  width: 100%;
+  width: 0;
   max-width: 100%;
+  height: 28px;
+  padding: 4px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Инпуты на canvas — авторесайз по содержимому */
+.placed-block .row-inline input {
+  flex: 0 0 auto;
+  min-width: 60px;
+  width: 60px;
+  max-width: 400px;
   height: 28px;
   padding: 4px 8px;
 }
 
-.tool-item .box-name {
-    font-size: 16px;
-    text-align: center;
-    display: block;
-    margin-bottom: -5px;
+/* То же для variable-row на canvas */
+.placed-block .variable-row input {
+  flex: 0 0 auto;
+  min-width: 60px;
+  width: 60px;
+  max-width: 400px;
 }
-
-.selection {
-    width: 68%;
-    text-align: center;
-}
-
-
 
 .workspace-wrap {
-  position: relative;
+  flex: 1;
+  min-width: 0;
   height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;   /* только рабочая область скроллит вниз */
+  position: relative;
 }
 
 .workspace {
-  position: absolute;
-  inset: 0;
-
+  /* Фон-сетка — фиксирована внутри workspace-wrap */
+  position: sticky;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 0;           /* не занимает места в потоке */
+  pointer-events: none;
+  z-index: 1;
+  overflow: visible;
+}
+.workspace::after {
+  content: '';
+  position: fixed;
+  /* займёт всю viewport-область правее toolbox */
+  top: 56px;
+  left: 280px;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
   background-color: var(--bg);
   background-image:
     linear-gradient(var(--grid) 1px, transparent 1px),
     linear-gradient(90deg, var(--grid) 1px, transparent 1px);
   background-size: 26px 26px;
-
-  overflow: hidden;
+  z-index: -1;
 }
 
 .console {
@@ -398,10 +482,11 @@ body {
 
 
 .canvas{
-  position: absolute;
-  inset: 0;
+  position: relative; /* не absolute — участвует в потоке, растягивает родителя */
+  width: 100%;
   z-index: 10;
-  overflow: hidden;
+  overflow: visible;
+  /* min-height управляется динамически из JS через expandCanvasIfNeeded() */
 }
 
 .placed-block{
@@ -415,15 +500,20 @@ body {
 .canvas .placed-block{
   position: absolute;
   width: fit-content;
+  max-width: none; /* блок растёт вместе с инпутами */
   cursor: grab;
   user-select: none;
-  max-width: 520px;
   transition: left 140ms ease-out, top 140ms ease-out;
 }
 
 
 .canvas .placed-block.dragging{
-  transition: none; 
+  transition: none;
+}
+
+/* При групповом drag тоже отключаем transition */
+.canvas .placed-block.group-dragging {
+  transition: none;
 }
 
 
@@ -497,18 +587,20 @@ body {
   box-shadow: 0 0 15px rgba(0, 188, 212, 0.5);
 }
 
-/* Array block */
+/* Блок массива — единый стиль с белым текстом */
 .make-array {
   background: #e67e22;
-  color: #1b1b1f;
+  color: white;
   border-color: rgba(0, 0, 0, 0.25);
 }
 
 .make-array .string {
-  color: #1b1b1f;
+  color: white;
   font-weight: bold;
 }
 
 .make-array input {
-  max-width: 80px;
+  color: white;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.2);
 }
