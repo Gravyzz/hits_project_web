@@ -59,6 +59,7 @@ export class Interpreter {
   }
 
   async execute(astNodes: ASTNode[]): Promise<void> {
+
     this.context.variables.clear();
     this.context.floatVariables.clear();
     this.context.stringVariables.clear();
@@ -70,9 +71,9 @@ export class Interpreter {
     this.context.iterationCount = 0;
 
     try {
- 
+
       await this.collectFunctions(astNodes);
-      
+
       await this.executeNodeList(astNodes);
     } catch (error) {
       const interpreterError: InterpreterError = {
@@ -114,6 +115,7 @@ export class Interpreter {
       throw new Error('Превышен лимит итераций. Возможна бесконечная петля.');
     }
 
+
     if (this.debugMode && this.onDebugStep) {
       await this.onDebugStep(node, this.context);
       if (this.debugMode) {
@@ -154,11 +156,11 @@ export class Interpreter {
           await this.executeCommand(node);
           break;
         case 'func-def':
+
           break;
         case 'return':
           return await this.executeReturn(node);
         default:
-    
           break;
       }
     } catch (error) {
@@ -235,7 +237,6 @@ export class Interpreter {
   private async executeArrayDecl(node: ASTNode): Promise<void> {
     if (!node.name) return;
     
-
     let initValues: number[] = [];
     if (node.initialValues) {
       initValues = node.initialValues.split(',').map(v => {
@@ -254,7 +255,7 @@ export class Interpreter {
     } else if (initValues.length > 0) {
       size = initValues.length;
     } else {
-      return; // no size and no values
+      return; 
     }
     
     if (size <= 0) {
@@ -305,7 +306,6 @@ export class Interpreter {
     
     let iterationLimit = 10000;
     let iterations = 0;
-    
 
     while (this.conditionParser.evaluate(node.condition)) {
       iterations++;
@@ -333,7 +333,6 @@ export class Interpreter {
     const originalType = this.context.variableTypes.get(node.variable);
     const originalValue = this.getVariableValue(node.variable);
     
-
     this.context.variableTypes.set(node.variable, 'int');
     
     let iterationLimit = 10000;
@@ -371,7 +370,6 @@ export class Interpreter {
   private async executeInput(node: ASTNode): Promise<void> {
     if (!node.variable) return;
     
-
     if (this.isArrayVariable(node.variable)) {
       if (!this.arrayExists(node.variable)) {
         throw new Error(`Массив для ${node.variable} не объявлен`);
@@ -498,7 +496,7 @@ export class Interpreter {
       throw new Error(`Массив ${arrayName} не объявлен`);
     }
     
-    // Evaluate index expression using current context
+
     const index = this.expressionParser.evaluate(indexExpr);
     
     if (index < 0 || index >= array.length) {

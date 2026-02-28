@@ -16,11 +16,11 @@ export class BlockParser {
       y: parseFloat(el.style.top) || el.getBoundingClientRect().top,
     })).sort((a, b) => a.y - b.y);
 
-
     this.checkForParallelGroups(elements);
 
     return this.buildAST(rawBlocks, 0, rawBlocks.length);
   }
+
 
   private static checkForParallelGroups(elements: HTMLElement[]) {
     if (elements.length < 2) return;
@@ -151,7 +151,7 @@ export class BlockParser {
     const funcBlock = blocks[start];
     const funcDecl = this.getInput(funcBlock.element, 'имя(арг1, арг2)');
     
- 
+
     const match = funcDecl.match(/^(\w+)\s*\(([^)]*)\)$/);
     if (!match) {
       throw new Error(`Неверный формат объявления функции: ${funcDecl}`);
@@ -238,6 +238,8 @@ export class BlockParser {
   }
 
 
+
+
   private static findEnd(blocks: RawBlock[], start: number, end: number, blockType: string = 'блок'): { bodyEnd: number } {
     let depth = 1;
     for (let i = start + 1; i < end; i++) {
@@ -246,7 +248,7 @@ export class BlockParser {
       else if (t === 'end') { depth--; if (depth === 0) return { bodyEnd: i }; }
     }
 
- 
+
     const messages: Record<string, string> = {
       'while': 'Цикл while не закрыт — добавьте блок end',
       'for': 'Цикл for не закрыт — добавьте блок end',
@@ -254,7 +256,6 @@ export class BlockParser {
       'func': 'Функция не закрыта — добавьте блок end',
     };
     const errorMsg = messages[blockType] || `Блок ${blockType} не закрыт — добавьте блок end`;
-
 
     if (blocks[start]?.element) {
       blocks[start].element.classList.add('error');

@@ -30,7 +30,7 @@ function renderConsole() {
 export function consoleLog(msg: string) {
   consoleState.logs.push(String(msg));
   renderConsole();
-  // Auto-scroll to bottom
+
   consoleTextEl.scrollTop = consoleTextEl.scrollHeight;
 }
 
@@ -55,6 +55,7 @@ function showConsole() {
   renderConsole();
 }
 
+
 const posState = {
   left: parseFloat(consoleEl.style.left) || 0,
   top: parseFloat(consoleEl.style.top) || 0,
@@ -62,6 +63,33 @@ const posState = {
 
 function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v));
+}
+
+const _measureSpan = document.createElement('span');
+_measureSpan.style.cssText = `
+  position: absolute; visibility: hidden; white-space: pre;
+  font-size: 12px; font-family: system-ui, sans-serif;
+  padding: 0 8px; top: -9999px; left: -9999px;
+`;
+document.body.appendChild(_measureSpan);
+
+function autoResizeInput(input: HTMLInputElement) {
+  const text = input.value || input.placeholder || '';
+  _measureSpan.textContent = text;
+  const textWidth = _measureSpan.offsetWidth;
+  const newWidth = Math.max(60, Math.min(400, textWidth + 8));
+  input.style.width = newWidth + 'px';
+}
+
+
+function setupAutoResize(container: HTMLElement) {
+  const inputs = container.querySelectorAll('input') as NodeListOf<HTMLInputElement>;
+  inputs.forEach(input => {
+    input.addEventListener('input', () => autoResizeInput(input));
+    if (input.value) {
+      autoResizeInput(input);
+    }
+  });
 }
 
 function applyConsolePos() {
@@ -90,7 +118,6 @@ consoleBtnTop.addEventListener("click", () => {
 });
 
 renderConsole();
-
 
 const sizeState = {
   width: consoleEl.offsetWidth,
@@ -131,7 +158,6 @@ resizer.addEventListener("pointercancel", () => (resizing = false));
 
 applyConsoleSize();
 
-
 let draggingConsole = false;
 let dragStart: any = null;
 
@@ -167,7 +193,7 @@ headerEl.addEventListener("pointermove", (e) => {
 headerEl.addEventListener("pointerup", () => (draggingConsole = false));
 headerEl.addEventListener("pointercancel", () => (draggingConsole = false));
 
-
+// ================== Console Input Handling ==================
 let pendingInputResolve: ((value: string) => void) | null = null;
 let inputElement: HTMLInputElement | null = null;
 
@@ -178,7 +204,6 @@ function createConsoleInput(prompt: string): Promise<string> {
 
     consoleLog(prompt);
     
-
     inputElement = document.createElement('input');
     inputElement.type = 'text';
     inputElement.placeholder = 'Введите значение и нажмите Enter...';
@@ -212,22 +237,21 @@ function createConsoleInput(prompt: string): Promise<string> {
     consoleTextEl.parentElement!.appendChild(inputElement);
     inputElement.focus();
     
-
     if (!consoleState.visible) {
       showConsole();
     }
   });
 }
 
-
 const interpreter = new Interpreter();
 
 
 interpreter.setCallbacks(
+
   (message: string) => {
     consoleLog(message);
   },
-
+  
   async (prompt: string): Promise<string> => {
     return createConsoleInput(prompt);
   },
@@ -244,7 +268,7 @@ function highlightErrorBlock(blockId: string) {
   document.querySelectorAll('.placed-block.error').forEach(block => {
     block.classList.remove('error');
   });
-  
+
   const errorBlock = document.querySelector(`[data-id="${blockId}"]`);
   if (errorBlock) {
     errorBlock.classList.add('error');
@@ -257,9 +281,9 @@ function clearErrorHighlights() {
   });
 }
 
+
 const runBtn = document.querySelector('.btn-run') as HTMLButtonElement;
 const debugBtn = document.getElementById('debugBtn') as HTMLButtonElement;
-
 
 let isDebugging = false;
 let debugStepBtn: HTMLButtonElement | null = null;
@@ -270,7 +294,8 @@ let currentDebugBlock: HTMLElement | null = null;
 
 runBtn.addEventListener('click', async () => {
   clearErrorHighlights();
-  clearLogs();
+
+  consoleLog('─────────────────── Новый запуск ───────────────────');
   consoleLog('🚀 Запуск программы...');
   
   try {
@@ -278,7 +303,7 @@ runBtn.addEventListener('click', async () => {
     const astNodes = BlockParser.parseFromCanvas(canvas);
     
     if (astNodes.length === 0) {
-      consoleLog('Нет блоков для выполнения');
+      consoleLog('⚠️ Нет блоков для выполнения');
       return;
     }
     
@@ -292,6 +317,7 @@ runBtn.addEventListener('click', async () => {
   }
 });
 
+// Debug mode
 debugBtn.addEventListener('click', async () => {
   if (isDebugging) {
     stopDebug();
@@ -299,7 +325,8 @@ debugBtn.addEventListener('click', async () => {
   }
   
   clearErrorHighlights();
-  clearLogs();
+
+  consoleLog('─────────────────── Новый запуск ───────────────────');
   consoleLog('🐛 Запуск в режиме отладки...');
   
   try {
@@ -307,7 +334,7 @@ debugBtn.addEventListener('click', async () => {
     const astNodes = BlockParser.parseFromCanvas(canvas);
     
     if (astNodes.length === 0) {
-      consoleLog('Нет блоков для выполнения');
+      consoleLog('⚠️ Нет блоков для выполнения');
       return;
     }
     
@@ -345,7 +372,7 @@ function startDebug() {
     
     debugContinueBtn = document.createElement('button');
     debugContinueBtn.className = 'btn';
-    debugContinueBtn.textContent = 'Continue';
+    debugContinueBtn.textContent = '▶️ Continue';
     debugContinueBtn.style.background = '#3b82f6';
     actions.appendChild(debugContinueBtn);
     
@@ -381,40 +408,38 @@ function stopDebug() {
 }
 
 async function onDebugStep(node: ASTNode, context: ExecutionContext) {
- 
   if (currentDebugBlock) {
     currentDebugBlock.classList.remove('debug-current');
   }
   
-
   if (node.element) {
     currentDebugBlock = node.element;
     currentDebugBlock.classList.add('debug-current');
   }
   
-  
+
   showVariableState(context);
 }
 
 function showVariableState(context: ExecutionContext) {
   let varsDisplay = '\n📋 Переменные:\n';
   
-  // Int variables
+
   for (const [name, value] of context.variables) {
     varsDisplay += `  ${name} (int): ${value}\n`;
   }
   
-  // Float variables
+
   for (const [name, value] of context.floatVariables) {
     varsDisplay += `  ${name} (float): ${value}\n`;
   }
   
-  // String variables
+
   for (const [name, value] of context.stringVariables) {
     varsDisplay += `  ${name} (str): "${value}"\n`;
   }
   
-  // Arrays
+
   for (const [name, arr] of context.arrays) {
     varsDisplay += `  ${name} (array): [${arr.join(', ')}]\n`;
   }
@@ -448,7 +473,7 @@ function getZ(el: HTMLElement) {
   return Number.isFinite(z) ? z : 0;
 }
 
-
+// ---- Snap helpers ----
 function findBestSnapTarget(activeEl: HTMLElement, excludeSet: Set<HTMLElement> | null = null): HTMLElement | null {
   const { left: ax, top: ay } = getLeftTop(activeEl);
   const aW = activeEl.offsetWidth;
@@ -526,7 +551,7 @@ function snapUnder(activeEl: HTMLElement, targetEl: HTMLElement) {
   activeEl.style.top = snapPos.top + "px";
 }
 
-
+// ==================== Marquee Selection ====================
 let selectionBox: HTMLElement | null = null;
 let startSelectionX = 0;
 let startSelectionY = 0;
@@ -536,8 +561,9 @@ function onSelectMove(e: MouseEvent) {
   if (!isSelecting || !selectionBox) return;
 
   const canvasRect = canvas.getBoundingClientRect();
+
   const currentX = e.clientX - canvasRect.left;
-  const currentY = e.clientY - canvasRect.top;
+  const currentY = e.clientY - canvasRect.top + workspaceWrap.scrollTop;
 
   const width = currentX - startSelectionX;
   const height = currentY - startSelectionY;
@@ -576,7 +602,6 @@ function onSelectUp() {
   suppressClick = true;
   setTimeout(() => (suppressClick = false), 0);
 }
-
 
 interface GroupItem {
   el: HTMLElement;
@@ -624,7 +649,7 @@ function clampGroupToCanvas(group: GroupItem[]) {
   if (minL < 0) shiftX = -minL;
   if (minT < 0) shiftY = -minT;
 
-  const overflowX = maxR - canvas.clientWidth;
+  const overflowX = maxR - workspaceWrap.clientWidth;
   const overflowY = maxB - canvas.clientHeight;
 
   if (overflowX > 0) shiftX -= overflowX;
@@ -645,18 +670,19 @@ function startGroupDrag(leader: HTMLElement, clientX: number, clientY: number) {
 
   dragGroup = collectSelectedGroup(leader);
 
-
   const base = Date.now();
   dragGroup
     .map((item) => ({ item, z: getZ(item.el) }))
     .sort((a, b) => a.z - b.z)
     .forEach((wrap, i) => {
       wrap.item.el.style.zIndex = String(base + i);
+      wrap.item.el.classList.add("group-dragging");
     });
 
-  const r = leader.getBoundingClientRect();
-  leaderGrabOffset.x = clientX - r.left;
-  leaderGrabOffset.y = clientY - r.top;
+
+  const canvasRect = canvas.getBoundingClientRect();
+  leaderGrabOffset.x = clientX - canvasRect.left;
+  leaderGrabOffset.y = clientY - canvasRect.top + workspaceWrap.scrollTop;
 
   document.addEventListener("mousemove", onGroupMove);
   document.addEventListener("mouseup", onGroupUp);
@@ -666,18 +692,16 @@ function onGroupMove(e: MouseEvent) {
   if (!isGroupDrag || !dragGroup || !groupLeader) return;
 
   const canvasRect = canvas.getBoundingClientRect();
-  const leaderItem = dragGroup.find(i => i.el === groupLeader);
-  if (!leaderItem) return;
 
-  const leaderX = e.clientX - canvasRect.left - leaderGrabOffset.x;
-  const leaderY = e.clientY - canvasRect.top - leaderGrabOffset.y;
+  const curX = e.clientX - canvasRect.left;
+  const curY = e.clientY - canvasRect.top + workspaceWrap.scrollTop;
 
-  const dx = leaderX - leaderItem.startLeft;
-  const dy = leaderY - leaderItem.startTop;
+  const dx = curX - leaderGrabOffset.x;
+  const dy = curY - leaderGrabOffset.y;
 
   dragGroup.forEach(item => {
     item.el.style.left = (item.startLeft + dx) + "px";
-    item.el.style.top = (item.startTop + dy) + "px";
+    item.el.style.top  = (item.startTop  + dy) + "px";
   });
 }
 
@@ -685,13 +709,18 @@ function onGroupUp() {
   if (!isGroupDrag || !dragGroup || !groupLeader) return;
 
   isGroupDrag = false;
-  clampGroupToCanvas(dragGroup);
 
   const target = findBestSnapTarget(groupLeader, new Set(dragGroup.map(x => x.el)));
   if (target) {
     target.dataset.next = groupLeader.dataset.id;
     groupLeader.dataset.prev = target.dataset.id;
   }
+
+  dragGroup.forEach(item => {
+    item.el.classList.remove("group-dragging");
+    clampBlockToCanvas(item.el);
+  });
+  expandCanvasIfNeeded();
 
   dragGroup = null;
   groupLeader = null;
@@ -724,59 +753,58 @@ function onMove(e: MouseEvent) {
   if (!active) return;
 
   const canvasRect = canvas.getBoundingClientRect();
-  const bw = active.offsetWidth;
-  const bh = active.offsetHeight;
 
   let x = e.clientX - canvasRect.left - offsetX;
-  let y = e.clientY - canvasRect.top - offsetY;
+  let y = e.clientY - canvasRect.top - offsetY + workspaceWrap.scrollTop;
 
-  const minX = -OVERSCROLL;
-  const minY = -OVERSCROLL;
-  const maxX = canvas.clientWidth - bw + OVERSCROLL;
-  const maxY = canvas.clientHeight - bh + OVERSCROLL;
-
-  x = Math.max(minX, Math.min(maxX, x));
-  y = Math.max(minY, Math.min(maxY, y));
+  const maxX = workspaceWrap.clientWidth - active.offsetWidth;
+  if (x < 0) x = 0;
+  if (x > maxX) x = maxX;
+  if (y < 0) y = 0;
 
   active.style.left = x + "px";
   active.style.top = y + "px";
 }
 
+function clampBlockToCanvas(el: HTMLElement) {
+  let x = parseFloat(el.style.left) || 0;
+  let y = parseFloat(el.style.top) || 0;
+  const maxX = workspaceWrap.clientWidth - el.offsetWidth;
+  if (x < 0) x = 0;
+  if (x > maxX) x = maxX;
+  if (y < 0) y = 0;
+  el.style.left = x + "px";
+  el.style.top  = y + "px";
+}
+
+function expandCanvasIfNeeded() {
+  let maxBottom = 0;
+  canvas.querySelectorAll(".placed-block").forEach(b => {
+    const el = b as HTMLElement;
+    const bottom = (parseFloat(el.style.top) || 0) + el.offsetHeight;
+    if (bottom > maxBottom) maxBottom = bottom;
+  });
+  const needed = maxBottom + 400; 
+  const current = parseInt(canvas.style.minHeight || '0', 10) || canvas.offsetHeight;
+  if (needed > current) {
+    canvas.style.minHeight = needed + "px";
+  }
+}
+
 function onUp() {
   if (!active) return;
-
-  const bw = active.offsetWidth;
-  const bh = active.offsetHeight;
-
-  let x = parseFloat(active.style.left) || 0;
-  let y = parseFloat(active.style.top) || 0;
-
-  const maxX = canvas.clientWidth - bw;
-  const maxY = canvas.clientHeight - bh;
-
-  x = clamp(x, 0, Math.max(0, maxX));
-  y = clamp(y, 0, Math.max(0, maxY));
-
-  active.style.left = x + "px";
-  active.style.top = y + "px";
 
   const target = findBestSnapTarget(active);
   if (target) {
     snapUnder(active, target);
-
-
     target.dataset.next = active.dataset.id;
     active.dataset.prev = target.dataset.id;
-
-    const x2 = parseFloat(active.style.left) || 0;
-    const y2 = parseFloat(active.style.top) || 0;
-
-    const maxX2 = canvas.clientWidth - active.offsetWidth;
-    const maxY2 = canvas.clientHeight - active.offsetHeight;
-
-    active.style.left = clamp(x2, 0, Math.max(0, maxX2)) + "px";
-    active.style.top = clamp(y2, 0, Math.max(0, maxY2)) + "px";
   }
+
+  // Не даём блоку уйти за левый/правый край
+  clampBlockToCanvas(active);
+  // Расширяем canvas вниз если нужно
+  expandCanvasIfNeeded();
 
   active.classList.remove("dragging");
   active = null;
@@ -784,7 +812,6 @@ function onUp() {
   document.removeEventListener("mousemove", onMove);
   document.removeEventListener("mouseup", onUp);
 }
-
 
 toolbox.addEventListener("mousedown", (e) => {
   const item = (e.target as HTMLElement).closest(".tool-item") as HTMLElement;
@@ -801,7 +828,6 @@ toolbox.addEventListener("mousedown", (e) => {
   clone.dataset.prev = "";
   clone.dataset.next = "";
 
-
   const deleteBtn = document.createElement("button");
   deleteBtn.className = "block-delete-btn";
   deleteBtn.innerHTML = "×";
@@ -813,22 +839,25 @@ toolbox.addEventListener("mousedown", (e) => {
   });
   clone.appendChild(deleteBtn);
 
-  clone.style.width = item.getBoundingClientRect().width + "px";
-
-  const itemRect = item.getBoundingClientRect();
-  const grabOffsetX = e.clientX - itemRect.left;
-  const grabOffsetY = e.clientY - itemRect.top;
+  setupAutoResize(clone);
 
   canvas.appendChild(clone);
 
   const canvasRect = canvas.getBoundingClientRect();
-  clone.style.left = e.clientX - canvasRect.left - grabOffsetX + "px";
-  clone.style.top = e.clientY - canvasRect.top - grabOffsetY + "px";
-
+  const itemRect = item.getBoundingClientRect();
+  const grabOffsetX = e.clientX - itemRect.left;
+  const grabOffsetY = e.clientY - itemRect.top;
+  const initLeft = e.clientX - canvasRect.left - grabOffsetX;
+  const initTop  = e.clientY - canvasRect.top  - grabOffsetY + workspaceWrap.scrollTop;
+  clone.style.left = initLeft + "px";
+  clone.style.top  = initTop  + "px";
 
   clearAllSelected();
   clone.classList.add("selected");
   selectedBlock = clone;
+
+  expandCanvasIfNeeded();
+
 
   startDrag(clone, e.clientX, e.clientY, grabOffsetX, grabOffsetY);
 });
@@ -841,15 +870,12 @@ function clearAllSelected() {
   canvas.querySelectorAll(".placed-block.selected").forEach((b) => b.classList.remove("selected"));
 }
 
-
 canvas.addEventListener("mousedown", (e) => {
-
   if (e.target === canvas && e.button === 0) {
     isSelecting = true;
-    
     const canvasRect = canvas.getBoundingClientRect();
     startSelectionX = e.clientX - canvasRect.left;
-    startSelectionY = e.clientY - canvasRect.top;
+    startSelectionY = e.clientY - canvasRect.top + workspaceWrap.scrollTop;
 
     selectionBox = document.createElement("div");
     selectionBox.className = "selection-box";
@@ -857,8 +883,6 @@ canvas.addEventListener("mousedown", (e) => {
     selectionBox.style.top = startSelectionY + "px";
     selectionBox.style.width = "0px";
     selectionBox.style.height = "0px";
-
-
     if (!e.shiftKey) clearAllSelected();
 
     canvas.appendChild(selectionBox);
@@ -867,7 +891,6 @@ canvas.addEventListener("mousedown", (e) => {
     document.addEventListener("mouseup", onSelectUp);
     return;
   }
-
 
   const block = (e.target as HTMLElement).closest(".placed-block") as HTMLElement;
   if (!block) return;
@@ -881,7 +904,6 @@ canvas.addEventListener("mousedown", (e) => {
     startGroupDrag(block, e.clientX, e.clientY);
     return;
   }
-
 
   if (!block.classList.contains("selected")) {
     clearAllSelected();
@@ -915,7 +937,6 @@ canvas.addEventListener("click", (e) => {
   selectedBlock = block;
 });
 
-
 canvas.addEventListener("contextmenu", (e) => {
   const block = (e.target as HTMLElement).closest(".placed-block") as HTMLElement;
   if (!block) return;
@@ -946,7 +967,6 @@ deleteAllBtn?.addEventListener("click", () => {
   selectedBlock = null;
 });
 
-
 const saveBtn = document.getElementById('saveBtn') as HTMLButtonElement;
 const loadBtn = document.getElementById('loadBtn') as HTMLButtonElement;
 
@@ -962,7 +982,7 @@ saveBtn.addEventListener('click', () => {
   const blocks = Array.from(canvas.querySelectorAll('.placed-block')) as HTMLElement[];
   
   if (blocks.length === 0) {
-    consoleLog('Нет блоков для сохранения');
+    consoleLog('⚠️ Нет блоков для сохранения');
     return;
   }
   
@@ -1104,25 +1124,23 @@ function createBlockFromSaveData(blockData: any): HTMLElement | null {
   block.style.left = blockData.position.left + 'px';
   block.style.top = blockData.position.top + 'px';
   
- 
+
   block.dataset.id = crypto.randomUUID();
   block.dataset.prev = "";
   block.dataset.next = "";
-  
-
-  const inputs = block.querySelectorAll('input') as NodeListOf<HTMLInputElement>;
+    const inputs = block.querySelectorAll('input') as NodeListOf<HTMLInputElement>;
   inputs.forEach(input => {
     if (input.placeholder && blockData.inputs[input.placeholder]) {
       input.value = blockData.inputs[input.placeholder];
     }
   });
-  
 
   const select = block.querySelector('select') as HTMLSelectElement;
   if (select && blockData.select) {
     select.value = blockData.select;
   }
   
+
   const deleteBtn = document.createElement("button");
   deleteBtn.className = "block-delete-btn";
   deleteBtn.innerHTML = "×";
@@ -1133,9 +1151,10 @@ function createBlockFromSaveData(blockData: any): HTMLElement | null {
     if (selectedBlock === block) selectedBlock = null;
   });
   block.appendChild(deleteBtn);
+
+  setupAutoResize(block);
   
   return block;
 }
-
 
 showConsole();
