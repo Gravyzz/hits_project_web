@@ -66,6 +66,7 @@ export class ExpressionParser {
       const op = this.ch()!;
       this.advance(); this.ws();
       const right = this.parseFactor();
+      
 
       if (typeof r === 'string' || typeof right === 'string') {
         throw new Error('Операции *, /, % не поддерживаются для строк');
@@ -88,7 +89,7 @@ export class ExpressionParser {
 
   private parseFactor(): number | string {
     this.ws();
-
+    
     if (this.ch() === '"' || this.ch() === "'") {
       return this.parseString();
     }
@@ -123,13 +124,11 @@ export class ExpressionParser {
   private parseNum(): number {
     let numStr = '';
     
-
     while (this.isDigit(this.ch())) {
       numStr += this.ch()!;
       this.advance();
     }
     
-
     if (this.ch() === '.') {
       numStr += '.';
       this.advance();
@@ -143,7 +142,7 @@ export class ExpressionParser {
   }
 
   private parseString(): string {
-    const quote = this.ch()!;
+    const quote = this.ch()!; 
     this.advance();
     let str = '';
     
@@ -165,7 +164,6 @@ export class ExpressionParser {
   }
 
   private shouldUseFloatDivision(): boolean {
-
     return true; 
   }
 
@@ -176,11 +174,9 @@ export class ExpressionParser {
     }
     this.ws();
     
-
     if (this.ch() === '(') {
       return this.parseFunctionCall(name);
     }
-    
 
     if (this.ch() === '[') {
       this.advance(); this.ws();
@@ -211,12 +207,12 @@ export class ExpressionParser {
   }
 
   private parseFunctionCall(functionName: string): number | string {
-
+ 
     if (['len', 'toInt', 'toFloat', 'toString'].includes(functionName)) {
       return this.parseBuiltinFunction(functionName);
     }
     
-   
+ 
     const funcDef = this.ctx.functions.get(functionName);
     if (!funcDef) {
       throw new Error(`Функция "${functionName}" не определена`);
@@ -244,6 +240,7 @@ export class ExpressionParser {
     if (args.length !== funcDef.parameters.length) {
       throw new Error(`Функция "${functionName}" ожидает ${funcDef.parameters.length} аргументов, получено ${args.length}`);
     }
+    
 
     throw new Error('Выполнение пользовательских функций в выражениях пока не поддерживается');
   }

@@ -26,7 +26,6 @@ export interface ASTNode {
   from?: string;
   to?: string;
   step?: string;
-  // Function-specific properties
   functionName?: string;
   parameters?: string[];
   returnValue?: string;
