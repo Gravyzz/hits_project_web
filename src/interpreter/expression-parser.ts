@@ -20,7 +20,7 @@ export class ExpressionParser {
   evaluateNumeric(expr: string): number {
     const result = this.evaluate(expr);
     if (typeof result === 'string') {
-      // Try to convert string to number
+
       const num = parseFloat(result);
       if (isNaN(num)) throw new Error(`Не удалось преобразовать "${result}" в число`);
       return num;
@@ -41,14 +41,14 @@ export class ExpressionParser {
       const right = this.parseTerm();
       
       if (op === '+') {
-        // String concatenation or number addition
+
         if (typeof r === 'string' || typeof right === 'string') {
           r = String(r) + String(right);
         } else {
           r = r + right;
         }
       } else {
-        // Subtraction only works with numbers
+
         if (typeof r === 'string' || typeof right === 'string') {
           throw new Error('Вычитание строк не поддерживается');
         }
@@ -66,8 +66,7 @@ export class ExpressionParser {
       const op = this.ch()!;
       this.advance(); this.ws();
       const right = this.parseFactor();
-      
-      // String operations not supported for *, /, %
+
       if (typeof r === 'string' || typeof right === 'string') {
         throw new Error('Операции *, /, % не поддерживаются для строк');
       }
@@ -76,7 +75,7 @@ export class ExpressionParser {
         r = r * right;
       } else if (op === '/') {
         if (right === 0) throw new Error('Деление на ноль');
-        // Check if either operand comes from a float variable
+
         r = this.shouldUseFloatDivision() ? r / right : Math.trunc(r / right);
       } else {
         if (right === 0) throw new Error('Деление на ноль');
@@ -89,8 +88,7 @@ export class ExpressionParser {
 
   private parseFactor(): number | string {
     this.ws();
-    
-    // String literals
+
     if (this.ch() === '"' || this.ch() === "'") {
       return this.parseString();
     }
@@ -125,13 +123,13 @@ export class ExpressionParser {
   private parseNum(): number {
     let numStr = '';
     
-    // Parse digits before decimal point
+
     while (this.isDigit(this.ch())) {
       numStr += this.ch()!;
       this.advance();
     }
     
-    // Parse decimal point and digits after
+
     if (this.ch() === '.') {
       numStr += '.';
       this.advance();
@@ -145,7 +143,7 @@ export class ExpressionParser {
   }
 
   private parseString(): string {
-    const quote = this.ch()!; // " or '
+    const quote = this.ch()!;
     this.advance();
     let str = '';
     
@@ -158,7 +156,7 @@ export class ExpressionParser {
       throw new Error(`Незакрытая строка, ожидается ${quote}`);
     }
     
-    this.advance(); // consume closing quote
+    this.advance(); 
     return str;
   }
 
@@ -167,8 +165,8 @@ export class ExpressionParser {
   }
 
   private shouldUseFloatDivision(): boolean {
-    // This is a simple heuristic - in a real implementation you'd track operand types
-    return true; // For now, always use float division - can be refined later
+
+    return true; 
   }
 
   private parseIdent(): number | string {
@@ -178,12 +176,12 @@ export class ExpressionParser {
     }
     this.ws();
     
-    // Function call
+
     if (this.ch() === '(') {
       return this.parseFunctionCall(name);
     }
     
-    // Array access
+
     if (this.ch() === '[') {
       this.advance(); this.ws();
       const idxResult = this.parseExpr();
@@ -198,7 +196,7 @@ export class ExpressionParser {
       return arr[Math.floor(idx)];
     }
     
-    // Variable lookup - check all variable maps
+
     if (this.ctx.stringVariables.has(name)) {
       return this.ctx.stringVariables.get(name)!;
     }
@@ -213,19 +211,19 @@ export class ExpressionParser {
   }
 
   private parseFunctionCall(functionName: string): number | string {
-    // Handle built-in functions
+
     if (['len', 'toInt', 'toFloat', 'toString'].includes(functionName)) {
       return this.parseBuiltinFunction(functionName);
     }
     
-    // Handle user-defined functions
+   
     const funcDef = this.ctx.functions.get(functionName);
     if (!funcDef) {
       throw new Error(`Функция "${functionName}" не определена`);
     }
     
-    // Parse arguments
-    this.advance(); // consume '('
+
+    this.advance(); 
     this.ws();
     
     const args: (number | string)[] = [];
@@ -246,13 +244,12 @@ export class ExpressionParser {
     if (args.length !== funcDef.parameters.length) {
       throw new Error(`Функция "${functionName}" ожидает ${funcDef.parameters.length} аргументов, получено ${args.length}`);
     }
-    
-    // Function execution would be handled in interpreter
+
     throw new Error('Выполнение пользовательских функций в выражениях пока не поддерживается');
   }
 
   private parseBuiltinFunction(functionName: string): number | string {
-    this.advance(); // consume '('
+    this.advance(); 
     this.ws();
     
     if (this.ch() === ')') {

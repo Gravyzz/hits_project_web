@@ -77,7 +77,7 @@ export class ConditionParser {
     const rightStr = this.extractArithExpr();
     const right = this.ep.evaluate(rightStr);
 
-    // Handle mixed type comparisons
+ 
     switch (op) {
       case '==': return this.compareValues(left, right, true) as boolean;
       case '!=': return !(this.compareValues(left, right, true) as boolean);
@@ -90,13 +90,13 @@ export class ConditionParser {
   }
 
   private compareValues(left: number | string, right: number | string, isEquality: boolean): number | boolean {
-    // For equality checks (== / !=)
+
     if (isEquality) {
       if (typeof left === typeof right) return left === right;
       return String(left) === String(right);
     }
     
-    // For ordering comparisons (>, <, >=, <=)
+
     if (typeof left === 'string' && typeof right === 'string') {
       return left.localeCompare(right);
     }
