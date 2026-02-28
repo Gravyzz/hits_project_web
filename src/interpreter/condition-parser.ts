@@ -77,7 +77,7 @@ export class ConditionParser {
     const rightStr = this.extractArithExpr();
     const right = this.ep.evaluate(rightStr);
 
- 
+
     switch (op) {
       case '==': return this.compareValues(left, right, true) as boolean;
       case '!=': return !(this.compareValues(left, right, true) as boolean);
