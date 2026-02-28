@@ -59,7 +59,6 @@ export class Interpreter {
   }
 
   async execute(astNodes: ASTNode[]): Promise<void> {
-    // Reset context
     this.context.variables.clear();
     this.context.floatVariables.clear();
     this.context.stringVariables.clear();
@@ -71,10 +70,9 @@ export class Interpreter {
     this.context.iterationCount = 0;
 
     try {
-      // First pass: collect function definitions
+ 
       await this.collectFunctions(astNodes);
       
-      // Second pass: execute code
       await this.executeNodeList(astNodes);
     } catch (error) {
       const interpreterError: InterpreterError = {
@@ -116,11 +114,10 @@ export class Interpreter {
       throw new Error('Превышен лимит итераций. Возможна бесконечная петля.');
     }
 
-    // Debug mode: pause before executing each node
     if (this.debugMode && this.onDebugStep) {
       await this.onDebugStep(node, this.context);
       if (this.debugMode) {
-        // Wait for step command
+
         await new Promise<void>((resolve) => {
           this.debugStepResolve = resolve;
         });
@@ -157,12 +154,11 @@ export class Interpreter {
           await this.executeCommand(node);
           break;
         case 'func-def':
-          // Function definitions are collected in the first pass, skip during execution
           break;
         case 'return':
           return await this.executeReturn(node);
         default:
-          // Skip unknown nodes
+    
           break;
       }
     } catch (error) {
@@ -182,15 +178,15 @@ export class Interpreter {
       if (name.trim() === '') continue;
       const varName = name.trim();
       
-      // Store variable type
+
       this.context.variableTypes.set(varName, dataType);
       
-      // Set initial value based on type
+
       if (node.initialValue && node.initialValue.trim() !== '') {
         const result = this.expressionParser.evaluate(node.initialValue);
         this.setVariableValue(varName, result, dataType);
       } else {
-        // Default values
+
         switch (dataType) {
           case 'int':
             this.context.variables.set(varName, 0);
@@ -239,7 +235,7 @@ export class Interpreter {
   private async executeArrayDecl(node: ASTNode): Promise<void> {
     if (!node.name) return;
     
-    // Parse initial values if provided
+
     let initValues: number[] = [];
     if (node.initialValues) {
       initValues = node.initialValues.split(',').map(v => {
@@ -276,12 +272,12 @@ export class Interpreter {
   private async executeAssignment(node: ASTNode): Promise<void> {
     if (!node.variable || !node.expression) return;
     
-    // Handle array assignments like arr[5] = value
+
     if (this.isArrayAssignment(node.variable)) {
       const value = this.expressionParser.evaluateNumeric(node.expression);
       this.setArrayValue(node.variable, value);
     } else {
-      // Regular variable assignment
+
       const varType = this.context.variableTypes.get(node.variable);
       if (!varType) {
         throw new Error(`Переменная ${node.variable} не объявлена`);
@@ -310,7 +306,7 @@ export class Interpreter {
     let iterationLimit = 10000;
     let iterations = 0;
     
-    // Re-evaluate condition each iteration using CURRENT variable values
+
     while (this.conditionParser.evaluate(node.condition)) {
       iterations++;
       if (iterations > iterationLimit) {
@@ -324,7 +320,7 @@ export class Interpreter {
   private async executeFor(node: ASTNode): Promise<void> {
     if (!node.variable || !node.from || !node.to || !node.step) return;
     
-    // Evaluate expressions using current context
+
     const from = this.expressionParser.evaluateNumeric(node.from);
     const to = this.expressionParser.evaluateNumeric(node.to);
     const step = this.expressionParser.evaluateNumeric(node.step);
@@ -333,11 +329,11 @@ export class Interpreter {
       throw new Error('Шаг цикла не может быть равен нулю');
     }
     
-    // Store original variable type and value if exists
+
     const originalType = this.context.variableTypes.get(node.variable);
     const originalValue = this.getVariableValue(node.variable);
     
-    // Temporarily set loop variable as int
+
     this.context.variableTypes.set(node.variable, 'int');
     
     let iterationLimit = 10000;
@@ -353,7 +349,7 @@ export class Interpreter {
       await this.executeNodeList(node.body || []);
     }
     
-    // Restore original variable type and value or remove if didn't exist
+
     if (originalType !== undefined && originalValue !== undefined) {
       this.context.variableTypes.set(node.variable, originalType);
       this.setVariableValue(node.variable, originalValue);
@@ -375,7 +371,7 @@ export class Interpreter {
   private async executeInput(node: ASTNode): Promise<void> {
     if (!node.variable) return;
     
-    // Handle array inputs like arr[5]
+
     if (this.isArrayVariable(node.variable)) {
       if (!this.arrayExists(node.variable)) {
         throw new Error(`Массив для ${node.variable} не объявлен`);
@@ -415,11 +411,11 @@ export class Interpreter {
     let message: string;
 
     try {
-      // String literal: "text" or 'text'
+
       if ((expr.startsWith('"') && expr.endsWith('"')) || (expr.startsWith("'") && expr.endsWith("'"))) {
         message = expr.slice(1, -1);
       } else {
-        // Try as arithmetic expression (variable or math), fall back to raw text
+
         try {
           const value = this.expressionParser.evaluate(expr);
           message = value.toString();
@@ -441,7 +437,6 @@ export class Interpreter {
   private async executeCommand(node: ASTNode): Promise<void> {
     if (!node.command) return;
     
-    // Check if it's an assignment (should have been parsed as assignment, but handle here as fallback)
     if (node.command.includes('=')) {
       const [variable, expression] = node.command.split('=').map(s => s.trim());
       
@@ -460,7 +455,7 @@ export class Interpreter {
         this.setVariableValue(variable, value);
       }
     } else {
-      // Try to evaluate as expression and output (for testing)
+
       try {
         const value = this.expressionParser.evaluate(node.command);
         if (this.onOutput) {
@@ -472,7 +467,7 @@ export class Interpreter {
     }
   }
 
-  // Helper methods
+
   private isArrayAssignment(variable: string): boolean {
     return /\w+\[.+\]/.test(variable);
   }

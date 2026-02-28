@@ -16,7 +16,41 @@ export class BlockParser {
       y: parseFloat(el.style.top) || el.getBoundingClientRect().top,
     })).sort((a, b) => a.y - b.y);
 
+
+    this.checkForParallelGroups(elements);
+
     return this.buildAST(rawBlocks, 0, rawBlocks.length);
+  }
+
+  private static checkForParallelGroups(elements: HTMLElement[]) {
+    if (elements.length < 2) return;
+
+    const positions = elements.map(el => ({
+      el,
+      top: parseFloat(el.style.top) || 0,
+      left: parseFloat(el.style.left) || 0,
+    }));
+
+    for (let i = 0; i < positions.length; i++) {
+      for (let j = i + 1; j < positions.length; j++) {
+        const a = positions[i];
+        const b = positions[j];
+        const deltaY = Math.abs(a.top - b.top);
+        const deltaX = Math.abs(a.left - b.left);
+
+
+        if (deltaY < 50 && deltaX > 100) {
+
+          a.el.classList.add('error');
+          b.el.classList.add('error');
+          throw new Error(
+            'Обнаружено несколько независимых групп блоков. ' +
+            'Программа должна быть одной последовательностью сверху вниз. ' +
+            'Расположите все блоки в одну вертикальную цепочку.'
+          );
+        }
+      }
+    }
   }
 
   private static getBlockType(el: HTMLElement): string {
@@ -91,7 +125,7 @@ export class BlockParser {
         nodes.push({ kind: 'return', returnValue, element: b.element });
         i++;
       } else {
-        i++; // skip end/else/unknown
+        i++; 
       }
     }
 
@@ -117,7 +151,7 @@ export class BlockParser {
     const funcBlock = blocks[start];
     const funcDecl = this.getInput(funcBlock.element, 'имя(арг1, арг2)');
     
-    // Parse function name and parameters
+ 
     const match = funcDecl.match(/^(\w+)\s*\(([^)]*)\)$/);
     if (!match) {
       throw new Error(`Неверный формат объявления функции: ${funcDecl}`);
@@ -127,8 +161,8 @@ export class BlockParser {
     const paramString = match[2].trim();
     const parameters = paramString ? paramString.split(',').map(p => p.trim()) : [];
     
-    // Find the matching end block
-    const { bodyEnd } = this.findEnd(blocks, start, end);
+
+    const { bodyEnd } = this.findEnd(blocks, start, end, 'func');
     const body = this.buildAST(blocks, start + 1, bodyEnd);
     
     return {
@@ -155,7 +189,11 @@ export class BlockParser {
       }
     }
 
-    if (endIdx === -1) endIdx = end;
+    if (endIdx === -1) {
+
+      ifBlock.element.classList.add('error');
+      throw new Error('Блок if не закрыт — добавьте блок end');
+    }
 
     let thenBody: ASTNode[];
     let elseBodyNodes: ASTNode[] | undefined;
@@ -176,7 +214,7 @@ export class BlockParser {
   private static parseWhile(blocks: RawBlock[], start: number, end: number): { node: ASTNode; nextIndex: number } {
     const whileBlock = blocks[start];
     const condition = this.getInput(whileBlock.element, 'Условие');
-    const { bodyEnd } = this.findEnd(blocks, start, end);
+    const { bodyEnd } = this.findEnd(blocks, start, end, 'while');
     const body = this.buildAST(blocks, start + 1, bodyEnd);
     return {
       node: { kind: 'while', condition, body, element: whileBlock.element },
@@ -191,7 +229,7 @@ export class BlockParser {
     const from = inputs[1]?.value || '0';
     const to = inputs[2]?.value || '10';
     const step = inputs[3]?.value || '1';
-    const { bodyEnd } = this.findEnd(blocks, start, end);
+    const { bodyEnd } = this.findEnd(blocks, start, end, 'for');
     const body = this.buildAST(blocks, start + 1, bodyEnd);
     return {
       node: { kind: 'for', variable, from, to, step, body, element: forBlock.element },
@@ -199,14 +237,30 @@ export class BlockParser {
     };
   }
 
-  private static findEnd(blocks: RawBlock[], start: number, end: number): { bodyEnd: number } {
+
+  private static findEnd(blocks: RawBlock[], start: number, end: number, blockType: string = 'блок'): { bodyEnd: number } {
     let depth = 1;
     for (let i = start + 1; i < end; i++) {
       const t = blocks[i].type;
-      if (t === 'if' || t === 'while' || t === 'for') depth++;
+      if (t === 'if' || t === 'while' || t === 'for' || t === 'func-def') depth++;
       else if (t === 'end') { depth--; if (depth === 0) return { bodyEnd: i }; }
     }
-    return { bodyEnd: end };
+
+ 
+    const messages: Record<string, string> = {
+      'while': 'Цикл while не закрыт — добавьте блок end',
+      'for': 'Цикл for не закрыт — добавьте блок end',
+      'if': 'Блок if не закрыт — добавьте блок end',
+      'func': 'Функция не закрыта — добавьте блок end',
+    };
+    const errorMsg = messages[blockType] || `Блок ${blockType} не закрыт — добавьте блок end`;
+
+
+    if (blocks[start]?.element) {
+      blocks[start].element.classList.add('error');
+    }
+
+    throw new Error(errorMsg);
   }
 
   static getInput(el: HTMLElement, placeholder: string): string {
