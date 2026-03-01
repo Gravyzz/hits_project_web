@@ -720,7 +720,7 @@ function onGroupUp() {
     item.el.classList.remove("group-dragging");
     clampBlockToCanvas(item.el);
   });
- ensureCanvasHeight();
+  expandCanvasIfNeeded();
 
   dragGroup = null;
   groupLeader = null;
@@ -791,23 +791,6 @@ function expandCanvasIfNeeded() {
   }
 }
 
-function ensureCanvasHeight() {
-  const blocks = canvas.querySelectorAll('.placed-block');
-  if (blocks.length === 0) {
-    canvas.style.minHeight = workspaceWrap.clientHeight + 'px';
-    return;
-  }
-  let maxBottom = 0;
-  blocks.forEach(block => {
-    const el = block as HTMLElement;
-    const top = parseFloat(el.style.top) || 0;
-    const bottom = top + el.offsetHeight;
-    if (bottom > maxBottom) maxBottom = bottom;
-  });
-  const neededHeight = Math.max(workspaceWrap.clientHeight, maxBottom + 100);
-  canvas.style.minHeight = neededHeight + 'px';
-}
-
 function onUp() {
   if (!active) return;
 
@@ -820,24 +803,14 @@ function onUp() {
 
   // Не даём блоку уйти за левый/правый край
   clampBlockToCanvas(active);
-  // Расширяем канвас и проверяем что блок не улетел вниз
-  ensureCanvasHeight();
-
-  const blockTop = parseFloat(active.style.top) || 0;
-  const blockBottom = blockTop + active.offsetHeight;
-  const canvasHeight = parseInt(canvas.style.minHeight) || canvas.offsetHeight;
-
-  if (blockBottom > canvasHeight - 50) {
-    const newTop = Math.max(0, canvasHeight - active.offsetHeight - 20);
-    active.style.top = newTop + 'px';
-  }
+  // Расширяем canvas вниз если нужно
+  expandCanvasIfNeeded();
 
   active.classList.remove("dragging");
   active = null;
 
   document.removeEventListener("mousemove", onMove);
   document.removeEventListener("mouseup", onUp);
-  ensureCanvasHeight();
 }
 
 toolbox.addEventListener("mousedown", (e) => {
@@ -863,7 +836,6 @@ toolbox.addEventListener("mousedown", (e) => {
     ev.stopPropagation();
     clone.remove();
     if (selectedBlock === clone) selectedBlock = null;
-    ensureCanvasHeight();
   });
   clone.appendChild(deleteBtn);
 
@@ -875,10 +847,8 @@ toolbox.addEventListener("mousedown", (e) => {
   const itemRect = item.getBoundingClientRect();
   const grabOffsetX = e.clientX - itemRect.left;
   const grabOffsetY = e.clientY - itemRect.top;
-  let initLeft = e.clientX - canvasRect.left - grabOffsetX;
-  let initTop  = e.clientY - canvasRect.top  - grabOffsetY + workspaceWrap.scrollTop;
-  const maxInitTop = Math.max(0, (canvas.clientHeight || workspaceWrap.clientHeight) - clone.offsetHeight - 20);
-  initTop = Math.min(initTop, maxInitTop);
+  const initLeft = e.clientX - canvasRect.left - grabOffsetX;
+  const initTop  = e.clientY - canvasRect.top  - grabOffsetY + workspaceWrap.scrollTop;
   clone.style.left = initLeft + "px";
   clone.style.top  = initTop  + "px";
 
@@ -886,7 +856,7 @@ toolbox.addEventListener("mousedown", (e) => {
   clone.classList.add("selected");
   selectedBlock = clone;
 
-  ensureCanvasHeight();
+  expandCanvasIfNeeded();
 
 
   startDrag(clone, e.clientX, e.clientY, grabOffsetX, grabOffsetY);
