@@ -486,6 +486,8 @@ body {
   width: 100%;
   z-index: 10;
   overflow: visible;
+   min-height: 100%;
+  transition: min-height 0.1s ease;
   /* min-height управляется динамически из JS через expandCanvasIfNeeded() */
 }
 
@@ -495,7 +497,9 @@ body {
 }
 .placed-block:active{ cursor: grabbing; }
 
-
+.placed-block:first-child {
+  margin-top: 0;
+}
 
 .canvas .placed-block{
   position: absolute;
