@@ -188,9 +188,25 @@ headerEl.addEventListener("pointermove", (e) => {
   posState.left = clamp(newLeft, 0, Math.max(0, maxLeft));
   posState.top = clamp(newTop, 0, Math.max(0, maxTop));
   applyConsolePos();
+  pushBlocksAwayFromMovedConsole();
 });
 
 headerEl.addEventListener("pointerup", () => (draggingConsole = false));
+function pushBlocksAwayFromMovedConsole() {
+  const blocks = canvas.querySelectorAll('.placed-block') as NodeListOf<HTMLElement>;
+  const consoleBounds = getConsoleBounds();
+  
+  blocks.forEach(block => {
+    const left = parseFloat(block.style.left) || 0;
+    const top = parseFloat(block.style.top) || 0;
+    
+    if (isOverlappingConsole(block, left, top)) {
+      const newPos = pushBlockAwayFromConsole(block, left, top);
+      block.style.left = newPos.left + 'px';
+      block.style.top = newPos.top + 'px';
+    }
+  });
+}
 headerEl.addEventListener("pointercancel", () => (draggingConsole = false));
 
 // ================== Console Input Handling ==================
@@ -762,6 +778,11 @@ function onMove(e: MouseEvent) {
   if (x > maxX) x = maxX;
   if (y < 0) y = 0;
 
+
+  if (isOverlappingConsole(active, x, y)) {
+    const newPos = pushBlockAwayFromConsole(active, x, y);
+    x = newPos.left;
+    y = newPos.top;}
   active.style.left = x + "px";
   active.style.top = y + "px";
 }
@@ -807,9 +828,81 @@ function ensureCanvasHeight() {
   const neededHeight = Math.max(workspaceWrap.clientHeight, maxBottom + 100);
   canvas.style.minHeight = neededHeight + 'px';
 }
+function getConsoleBounds() {
+  const rect = consoleEl.getBoundingClientRect();
+  const canvasRect = canvas.getBoundingClientRect();
+  return {
+    left: rect.left - canvasRect.left,
+    right: rect.right - canvasRect.left,
+    top: rect.top - canvasRect.top + workspaceWrap.scrollTop,
+    bottom: rect.bottom - canvasRect.top + workspaceWrap.scrollTop,
+    width: rect.width,
+    height: rect.height
+  };
+}
+function isOverlappingConsole(blockEl: HTMLElement, newLeft: number, newTop: number): boolean {
+  const consoleBounds = getConsoleBounds();
+  const blockRight = newLeft + blockEl.offsetWidth;
+  const blockBottom = newTop + blockEl.offsetHeight;
+  return !(
+    blockRight < consoleBounds.left ||
+    newLeft > consoleBounds.right ||
+    blockBottom < consoleBounds.top ||
+    newTop > consoleBounds.bottom
+  );
+}
+function pushBlockAwayFromConsole(blockEl: HTMLElement, targetLeft: number, targetTop: number): { left: number; top: number } {
+  const consoleBounds = getConsoleBounds();
+  const blockRight = targetLeft + blockEl.offsetWidth;
+  const blockBottom = targetTop + blockEl.offsetHeight;
+  let newLeft = targetLeft;
+  let newTop = targetTop;
+  if (!(blockRight < consoleBounds.left ||
+        newLeft > consoleBounds.right ||
+        blockBottom < consoleBounds.top ||
+        newTop > consoleBounds.bottom)) {
+
+    const blockCenterX = targetLeft + blockEl.offsetWidth / 2;
+    const blockCenterY = targetTop + blockEl.offsetHeight / 2;
+    const consoleCenterX = (consoleBounds.left + consoleBounds.right) / 2;
+    const consoleCenterY = (consoleBounds.top + consoleBounds.bottom) / 2;
+    const overlapLeft = Math.max(0, blockRight - consoleBounds.left);
+    const overlapRight = Math.max(0, consoleBounds.right - newLeft);
+    const overlapTop = Math.max(0, blockBottom - consoleBounds.top);
+    const overlapBottom = Math.max(0, consoleBounds.bottom - newTop);
+    const minOverlapX = Math.min(overlapLeft, overlapRight);
+    const minOverlapY = Math.min(overlapTop, overlapBottom);
+    if (minOverlapX < minOverlapY) {
+      if (overlapLeft < overlapRight) {
+        newLeft = consoleBounds.right + 5;
+      } else {
+        newLeft = consoleBounds.left - blockEl.offsetWidth - 5; 
+      }
+    } else {
+      if (overlapTop < overlapBottom) {
+        newTop = consoleBounds.bottom + 5; 
+      } else {
+        newTop = consoleBounds.top - blockEl.offsetHeight - 5; 
+      }
+    }
+    const maxX = workspaceWrap.clientWidth - blockEl.offsetWidth;
+    const maxY = canvas.clientHeight - blockEl.offsetHeight;
+    newLeft = Math.max(0, Math.min(newLeft, maxX));
+    newTop = Math.max(0, Math.min(newTop, maxY));
+  }
+  return { left: newLeft, top: newTop };
+}
 
 function onUp() {
   if (!active) return;
+
+  const currentLeft = parseFloat(active.style.left) || 0;
+  const currentTop = parseFloat(active.style.top) || 0;
+  if (isOverlappingConsole(active, currentLeft, currentTop)) {
+    const newPos = pushBlockAwayFromConsole(active, currentLeft, currentTop);
+    active.style.left = newPos.left + "px";
+    active.style.top = newPos.top + "px";
+  }
 
   const target = findBestSnapTarget(active);
   if (target) {
@@ -877,6 +970,10 @@ toolbox.addEventListener("mousedown", (e) => {
   const grabOffsetY = e.clientY - itemRect.top;
   let initLeft = e.clientX - canvasRect.left - grabOffsetX;
   let initTop  = e.clientY - canvasRect.top  - grabOffsetY + workspaceWrap.scrollTop;
+  if (isOverlappingConsole(clone, initLeft, initTop)) {
+  const consoleBounds = getConsoleBounds();
+  initTop = consoleBounds.bottom + 20; 
+}
   const maxInitTop = Math.max(0, (canvas.clientHeight || workspaceWrap.clientHeight) - clone.offsetHeight - 20);
   initTop = Math.min(initTop, maxInitTop);
   clone.style.left = initLeft + "px";
