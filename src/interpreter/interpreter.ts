@@ -241,14 +241,13 @@ export class Interpreter {
     if (node.initialValues) {
       initValues = node.initialValues.split(',').map(v => {
         const trimmed = v.trim();
-        const num = this.expressionParser.evaluate(trimmed);
-        return num;
+        return this.expressionParser.evaluateNumeric(trimmed);
       });
     }
     
     let size: number;
     if (node.size && node.size.trim() !== '') {
-      size = this.expressionParser.evaluate(node.size);
+      size = this.expressionParser.evaluateNumeric(node.size);
       if (initValues.length > size) {
         size = initValues.length;
       }
@@ -497,7 +496,7 @@ export class Interpreter {
     }
     
 
-    const index = this.expressionParser.evaluate(indexExpr);
+    const index = this.expressionParser.evaluateNumeric(indexExpr);
     
     if (index < 0 || index >= array.length) {
       throw new Error(`Индекс ${index} выходит за границы массива ${arrayName}`);
