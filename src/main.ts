@@ -1,6 +1,6 @@
 import { Interpreter } from './interpreter/interpreter.js';
 import { BlockParser } from './interpreter/block-parser.js';
-import type { InterpreterError } from './types/blocks.js';
+import type { InterpreterError, ASTNode, ExecutionContext } from './types/blocks.js';
 
 
 const consoleEl = document.getElementById("console") as HTMLElement;
@@ -1189,6 +1189,7 @@ function getBlockSaveType(block: HTMLElement): string {
   if (block.classList.contains('return-part')) return 'return-part';
   if (block.classList.contains('end-part-if')) return 'end-part-if';
   if (block.classList.contains('end-part-for')) return 'end-part-for';
+  if (block.classList.contains('make-array')) return 'make-array';
   return 'unknown';
 }
 
@@ -1233,7 +1234,8 @@ function createBlockFromSaveData(blockData: any): HTMLElement | null {
   for (const item of toolItems) {
     if (item.classList.contains(blockData.type.replace('-part', '-part')) || 
         (blockData.type === 'make-variable' && item.classList.contains('make-variable')) ||
-        (blockData.type === 'command-part' && item.classList.contains('command-part'))) {
+        (blockData.type === 'command-part' && item.classList.contains('command-part')) ||
+        (blockData.type === 'make-array' && item.classList.contains('make-array'))) {
       template = item;
       break;
     }

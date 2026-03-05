@@ -39,7 +39,7 @@ export class BlockParser {
         const deltaX = Math.abs(a.left - b.left);
 
 
-        if (deltaY < 50 && deltaX > 100) {
+        if (deltaY < 30 && deltaX > 300) {
 
           a.el.classList.add('error');
           b.el.classList.add('error');

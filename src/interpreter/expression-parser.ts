@@ -77,7 +77,7 @@ export class ExpressionParser {
       } else if (op === '/') {
         if (right === 0) throw new Error('Деление на ноль');
 
-        r = this.shouldUseFloatDivision() ? r / right : Math.trunc(r / right);
+        r = Math.trunc(r / right);
       } else {
         if (right === 0) throw new Error('Деление на ноль');
         r = r % right;
@@ -163,10 +163,6 @@ export class ExpressionParser {
     return this.pos + 1 < this.s.length ? this.s[this.pos + 1] : null;
   }
 
-  private shouldUseFloatDivision(): boolean {
-    return true; 
-  }
-
   private parseIdent(): number | string {
     let name = '';
     while (this.ch() !== null && (this.isAlpha(this.ch()) || this.isDigit(this.ch()) || this.ch() === '_')) {
@@ -242,7 +238,9 @@ export class ExpressionParser {
     }
     
 
-    throw new Error('Выполнение пользовательских функций в выражениях пока не поддерживается');
+    // Пользовательские функции в выражениях ограничены синхронной природой парсера
+    console.warn(`Вызов пользовательской функции "${functionName}" в выражении не поддерживается, возвращаю 0`);
+    return 0;
   }
 
   private parseBuiltinFunction(functionName: string): number | string {
