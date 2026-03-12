@@ -76,8 +76,7 @@ export class ExpressionParser {
         r = r * right;
       } else if (op === '/') {
         if (right === 0) throw new Error('Деление на ноль');
-
-        r = Math.trunc(r / right);
+        r = r / right;
       } else {
         if (right === 0) throw new Error('Деление на ноль');
         r = r % right;
@@ -182,12 +181,22 @@ export class ExpressionParser {
       this.ws();
       if (this.ch() !== ']') throw new Error('Ожидается "]"');
       this.advance();
+      
+      // Check if it's a string index access (e.g., "hello"[0])
+      if (name.startsWith('"') || name.startsWith("'")) {
+        return this.parseStringIndex(name, idx);
+      }
+      
       const arr = this.ctx.arrays.get(name);
       if (!arr) throw new Error(`Массив "${name}" не объявлен`);
       if (idx < 0 || idx >= arr.length) throw new Error(`Индекс ${idx} за границами массива "${name}" (размер ${arr.length})`);
       return arr[Math.floor(idx)];
     }
     
+    // String character access through variable
+    if (this.ch() === '"' || this.ch() === "'") {
+      return this.parseStringIndex(name, 0);
+    }
 
     if (this.ctx.stringVariables.has(name)) {
       return this.ctx.stringVariables.get(name)!;
@@ -200,6 +209,27 @@ export class ExpressionParser {
     }
     
     throw new Error(`Переменная "${name}" не объявлена`);
+  }
+  
+  private parseStringIndex(strExpr: string, index: number): number | string {
+    // Handle string literal index access: "hello"[0]
+    let strValue: string;
+    
+    if (strExpr.startsWith('"') || strExpr.startsWith("'")) {
+      // It's a string literal
+      strValue = strExpr.slice(1, -1);
+    } else if (this.ctx.stringVariables.has(strExpr)) {
+      strValue = this.ctx.stringVariables.get(strExpr)!;
+    } else {
+      throw new Error(`Строка или переменная "${strExpr}" не найдена`);
+    }
+    
+    const idx = Math.floor(index);
+    if (idx < 0 || idx >= strValue.length) {
+      throw new Error(`Индекс ${idx} выходит за границы строки "${strValue}" (длина ${strValue.length})`);
+    }
+    
+    return strValue[idx];
   }
 
   private parseFunctionCall(functionName: string): number | string {
@@ -239,7 +269,8 @@ export class ExpressionParser {
     
 
     // Пользовательские функции в выражениях ограничены синхронной природой парсера
-    console.warn(`Вызов пользовательской функции "${functionName}" в выражении не поддерживается, возвращаю 0`);
+    // Для полноценной поддержки нужно переделать архитектуру
+    console.warn(`Вызов пользовательской функции "${functionName}" в выражении возвращает 0. Используйте блок Command для вызова функций.`);
     return 0;
   }
 
@@ -289,5 +320,13 @@ export class ExpressionParser {
   }
 
   private isDigit(c: string | null): boolean { return c !== null && c >= '0' && c <= '9'; }
-  private isAlpha(c: string | null): boolean { return c !== null && ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c === '_'); }
+  private isAlpha(c: string | null): boolean { 
+    if (c === null) return false;
+    // Support Latin, Cyrillic, and other unicode letters
+    const code = c.charCodeAt(0);
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c === '_' || 
+           (code >= 0x0400 && code <= 0x04FF) || // Cyrillic
+           (code >= 0x0600 && code <= 0x06FF) || // Arabic
+           (code >= 0x4e00 && code <= 0x9fff);   // Chinese
+  }
 }

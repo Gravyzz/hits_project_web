@@ -279,6 +279,40 @@ body {
   min-width: 0;
 }
 
+.convert-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.convert-row .row-inline {
+  flex-wrap: wrap;
+}
+
+.convert-row > .tool-item {
+  min-width: 0;
+  width: auto;
+}
+
+.toint-part,
+.tofloat-part,
+.tostring-part {
+  min-height: 52px;
+}
+
+.toint-part {
+  background: #e65100;
+}
+
+.tofloat-part {
+  background: #0097a7;
+}
+
+.tostring-part {
+  background: #7b1fa2;
+}
+
 .row-inline {
   display: flex;
   align-items: center;

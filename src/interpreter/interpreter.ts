@@ -76,8 +76,28 @@ export class Interpreter {
 
       await this.executeNodeList(astNodes);
     } catch (error) {
+      // Если ошибка уже InterpreterError - перебрасываем как есть
+      if (error instanceof Object && 'errorType' in error) {
+        throw error;
+      }
+      
+      // Определяем тип ошибки по сообщению
+      let errorType: InterpreterError['errorType'] = 'RuntimeError';
+      const msg = error instanceof Error ? error.message : String(error);
+      
+      if (msg.includes('не определена') || msg.includes('не объявлена')) {
+        errorType = 'ReferenceError';
+      } else if (msg.includes('тип') || msg.includes('конверт')) {
+        errorType = 'TypeError';
+      } else if (msg.includes('синтаксис') || msg.includes('ожидается') || msg.includes('некорректн')) {
+        errorType = 'SyntaxError';
+      } else if (msg.includes('не удалось') || msg.includes('невозможно')) {
+        errorType = 'ValueError';
+      }
+      
       const interpreterError: InterpreterError = {
-        message: error instanceof Error ? error.message : String(error),
+        message: msg,
+        errorType,
         blockId: this.context.currentLine.toString(),
         lineNumber: this.context.currentLine
       };
@@ -99,6 +119,73 @@ export class Interpreter {
         });
       }
     }
+  }
+
+  private throwError(message: string, type: InterpreterError['errorType'], blockId?: string): never {
+    const interpreterError: InterpreterError = {
+      message,
+      errorType: type,
+      blockId: blockId || this.context.currentLine.toString(),
+      lineNumber: this.context.currentLine
+    };
+    
+    if (this.onError) {
+      this.onError(interpreterError);
+    }
+    throw interpreterError;
+  }
+
+  // Execute a function and return its result
+  async executeFunction(functionName: string, args: (number | string)[]): Promise<number | string> {
+    
+    const funcDef = this.context.functions.get(functionName);
+    if (!funcDef) {
+      throw new Error(`Функция "${functionName}" не определена`);
+    }
+    
+    
+    if (args.length !== funcDef.parameters.length) {
+      throw new Error(`Функция "${functionName}" ожидает ${funcDef.parameters.length} аргументов, получено ${args.length}`);
+    }
+    
+    // Save current context
+    const savedVars = new Map(this.context.variables);
+    const savedFloatVars = new Map(this.context.floatVariables);
+    const savedStringVars = new Map(this.context.stringVariables);
+    const savedVarTypes = new Map(this.context.variableTypes);
+    
+    // Set function parameters
+    for (let i = 0; i < funcDef.parameters.length; i++) {
+      const paramName = funcDef.parameters[i];
+      const argValue = args[i];
+      this.context.variableTypes.set(paramName, typeof argValue === 'string' ? 'str' : 'int');
+      if (typeof argValue === 'string') {
+        this.context.stringVariables.set(paramName, argValue);
+      } else {
+        this.context.variables.set(paramName, argValue);
+      }
+    }
+    
+    
+    // Execute function body
+    let returnValue: number | string | undefined;
+    try {
+      for (const node of funcDef.body) {
+        if (node.kind === 'return') {
+          returnValue = await this.executeReturn(node);
+          break;
+        }
+        await this.executeNode(node);
+      }
+    } finally {
+      // Restore context
+      this.context.variables = savedVars;
+      this.context.floatVariables = savedFloatVars;
+      this.context.stringVariables = savedStringVars;
+      this.context.variableTypes = savedVarTypes;
+    }
+    
+    return returnValue ?? 0;
   }
 
   private async executeNodeList(nodes: ASTNode[]): Promise<void> {
@@ -160,12 +247,35 @@ export class Interpreter {
           break;
         case 'return':
           return await this.executeReturn(node);
+        case 'convert':
+          await this.executeConvert(node);
+          break;
         default:
           break;
       }
     } catch (error) {
+      // Если уже InterpreterError — пробрасываем как есть
+      if (error instanceof Object && 'errorType' in error) {
+        throw error;
+      }
+      
+      // Определяем тип ошибки по сообщению
+      let errorType: InterpreterError['errorType'] = 'RuntimeError';
+      const msg = error instanceof Error ? error.message : String(error);
+      
+      if (msg.includes('не определена') || msg.includes('не объявлена')) {
+        errorType = 'ReferenceError';
+      } else if (msg.includes('тип') || msg.includes('конверт')) {
+        errorType = 'TypeError';
+      } else if (msg.includes('синтаксис') || msg.includes('ожидается') || msg.includes('некорректн')) {
+        errorType = 'SyntaxError';
+      } else if (msg.includes('не удалось') || msg.includes('невозможно')) {
+        errorType = 'ValueError';
+      }
+      
       const interpreterError: InterpreterError = {
-        message: error instanceof Error ? error.message : String(error),
+        message: msg,
+        errorType,
         blockId: node.element?.dataset?.id || 'unknown',
         lineNumber: this.context.currentLine
       };
@@ -185,8 +295,21 @@ export class Interpreter {
       
 
       if (node.initialValue && node.initialValue.trim() !== '') {
-        const result = this.expressionParser.evaluate(node.initialValue);
-        this.setVariableValue(varName, result, dataType);
+        const rawValue = node.initialValue.trim();
+        
+        // Для строковых переменных обязательны кавычки
+        if (dataType === 'str') {
+          if (!rawValue.startsWith('"') && !rawValue.startsWith("'")) {
+            throw new Error(`Строковое значение должно быть в кавычках. Пример: "${rawValue}"`);
+          }
+          // Убираем внешние кавычки
+          const strValue = rawValue.slice(1, -1);
+          this.context.stringVariables.set(varName, strValue);
+        } else {
+          // Для int и float используем парсер выражений
+          const result = this.expressionParser.evaluate(rawValue);
+          this.setVariableValue(varName, result, dataType);
+        }
       } else {
 
         switch (dataType) {
@@ -398,28 +521,183 @@ export class Interpreter {
   private async executeReturn(node: ASTNode): Promise<number | string | undefined> {
     if (!node.returnValue) return undefined;
     
-    return this.expressionParser.evaluate(node.returnValue);
+    // Отладка
+    
+    const result = this.expressionParser.evaluate(node.returnValue);
+    
+    return result;
+  }
+
+  private async executeConvert(node: ASTNode): Promise<void> {
+    if (!node.convertType || !node.variable) return;
+    
+    const varName = node.variable.trim();
+    const currentType = this.context.variableTypes.get(varName);
+    
+    if (!currentType) {
+      throw new Error(`Переменная "${varName}" не объявлена`);
+    }
+    
+    // Получаем текущее значение переменной
+    let currentValue = this.getVariableValue(varName);
+    
+    if (currentValue === undefined) {
+      throw new Error(`Переменная "${varName}" не имеет значения`);
+    }
+    
+    let result: number | string;
+    
+    try {
+      switch (node.convertType) {
+        case 'toInt':
+          if (typeof currentValue === 'string') {
+            result = parseInt(currentValue, 10);
+            if (isNaN(result)) throw new Error(`Не удалось преобразовать "${currentValue}" в целое число`);
+          } else {
+            result = Math.trunc(currentValue);
+          }
+          // Удаляем из других типов, сохраняем как int
+          this.context.floatVariables.delete(varName);
+          this.context.stringVariables.delete(varName);
+          this.context.variableTypes.set(varName, 'int');
+          this.context.variables.set(varName, result);
+          if (this.onOutput) {
+            this.onOutput(`${varName} = ${result} (конвертировано в int)`);
+          }
+          break;
+        case 'toFloat':
+          if (typeof currentValue === 'string') {
+            result = parseFloat(currentValue);
+            if (isNaN(result)) throw new Error(`Не удалось преобразовать "${currentValue}" в число с плавающей запятой`);
+          } else {
+            result = currentValue;
+          }
+          // Удаляем из других типов, сохраняем как float
+          this.context.variables.delete(varName);
+          this.context.stringVariables.delete(varName);
+          this.context.variableTypes.set(varName, 'float');
+          this.context.floatVariables.set(varName, result);
+          if (this.onOutput) {
+            this.onOutput(`${varName} = ${result} (конвертировано в float)`);
+          }
+          break;
+        case 'toString':
+          result = String(currentValue);
+          // Удаляем из других типов, сохраняем как str
+          this.context.variables.delete(varName);
+          this.context.floatVariables.delete(varName);
+          this.context.variableTypes.set(varName, 'str');
+          this.context.stringVariables.set(varName, result);
+          if (this.onOutput) {
+            this.onOutput(`${varName} = "${result}" (конвертировано в str)`);
+          }
+          break;
+        default:
+          throw new Error(`Неизвестный тип конвертации: ${node.convertType}`);
+      }
+    } catch (error) {
+      throw new Error(`Ошибка конвертации: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   private async executeOutput(node: ASTNode): Promise<void> {
     if (!node.expression) return;
     
     const expr = node.expression.trim();
-    let message: string;
-
-    try {
-
-      if ((expr.startsWith('"') && expr.endsWith('"')) || (expr.startsWith("'") && expr.endsWith("'"))) {
-        message = expr.slice(1, -1);
-      } else {
-
-        try {
-          const value = this.expressionParser.evaluate(expr);
-          message = value.toString();
-        } catch {
-          message = expr;
+    
+    // Проверка: текст без кавычек - это ошибка
+    // Текст без кавычек = последовательность букв без операторов и без кавычек
+    if (expr.length > 0) {
+      const hasQuotes = expr.startsWith('"') || expr.startsWith("'");
+      const hasOperators = /[\+\-\*\/\%\(\)]/.test(expr);
+      const isNumber = /^\d+\.?\d*$/.test(expr);
+      const isVariableRef = /^\w+$/.test(expr);
+      
+      if (!hasQuotes && !hasOperators && !isNumber && !isVariableRef) {
+        // Похоже на текст без кавычек
+        throw new Error(`Синтаксическая ошибка: текст должен быть в кавычках. Пример: "${expr}"`);
+      }
+    }
+    
+    // Check if it's a string literal
+    if ((expr.startsWith('"') && expr.endsWith('"')) || (expr.startsWith("'") && expr.endsWith("'"))) {
+      const message = expr.slice(1, -1);
+      this.context.output.push(message);
+      if (this.onOutput) {
+        this.onOutput(message);
+      }
+      return;
+    }
+    
+    // Проверяем вызов функции: sum(5, 3)
+    const funcCallMatch = expr.match(/^(\w+)\s*\(([^)]*)\)$/);
+    if (funcCallMatch) {
+      const funcName = funcCallMatch[1];
+      const argsStr = funcCallMatch[2].trim();
+      
+      const args: (number | string)[] = [];
+      if (argsStr) {
+        const argParts = argsStr.split(',').map(s => s.trim());
+        for (const arg of argParts) {
+          const num = parseFloat(arg);
+          if (!isNaN(num) && String(num) === arg) {
+            args.push(num);
+          } else if ((arg.startsWith('"') && arg.endsWith('"')) || (arg.startsWith("'") && arg.endsWith("'"))) {
+            args.push(arg.slice(1, -1));
+          } else {
+            const varValue = this.getVariableValue(arg);
+            if (varValue !== undefined) {
+              args.push(varValue);
+            } else {
+              throw new Error(`Аргумент "${arg}" не является числом или переменной`);
+            }
+          }
         }
       }
+      
+      const result = await this.executeFunction(funcName, args);
+      const message = String(result);
+      this.context.output.push(message);
+      if (this.onOutput) {
+        this.onOutput(message);
+      }
+      return;
+    }
+    
+    // Check for multiple variables (comma-separated)
+    if (expr.includes(',')) {
+      const parts = expr.split(',').map(p => p.trim());
+      const results: string[] = [];
+      
+      for (const part of parts) {
+        try {
+          // Check if it's a string literal
+          if ((part.startsWith('"') && part.endsWith('"')) || (part.startsWith("'") && part.endsWith("'"))) {
+            results.push(part.slice(1, -1));
+          } else {
+            // Evaluate as expression
+            const value = this.expressionParser.evaluate(part);
+            results.push(String(value));
+          }
+        } catch {
+          // If evaluation fails, keep the original text
+          results.push(part);
+        }
+      }
+      
+      const message = results.join(', ');
+      this.context.output.push(message);
+      if (this.onOutput) {
+        this.onOutput(message);
+      }
+      return;
+    }
+    
+    // Single expression
+    let message: string;
+    try {
+      const value = this.expressionParser.evaluate(expr);
+      message = value.toString();
     } catch {
       message = expr;
     }
@@ -430,12 +708,91 @@ export class Interpreter {
       this.onOutput(message);
     }
   }
+  
+  private isValidExpression(expr: string): boolean {
+    // Check if it's a valid expression (has operators, function calls, etc)
+    return /[\+\-\*\/\%\(\)]/.test(expr) || /\w+\s*\(/.test(expr);
+  }
 
   private async executeCommand(node: ASTNode): Promise<void> {
     if (!node.command) return;
     
+    // Проверяем, является ли команда вызовом функции (например, "sum(5, 3)")
+    const funcCallMatch = node.command.match(/^(\w+)\s*\(([^)]*)\)$/);
+    if (funcCallMatch) {
+      const funcName = funcCallMatch[1];
+      const argsStr = funcCallMatch[2].trim();
+      
+      // Парсим аргументы
+      const args: (number | string)[] = [];
+      if (argsStr) {
+        // Простой парсинг аргументов через запятую
+        const argParts = argsStr.split(',').map(s => s.trim());
+        for (const arg of argParts) {
+          // Пробуем распарсить как число
+          const num = parseFloat(arg);
+          if (!isNaN(num) && String(num) === arg) {
+            args.push(num);
+          } else if ((arg.startsWith('"') && arg.endsWith('"')) || (arg.startsWith("'") && arg.endsWith("'"))) {
+            args.push(arg.slice(1, -1));
+          } else {
+            // Это имя переменной
+            const varValue = this.getVariableValue(arg);
+            if (varValue !== undefined) {
+              args.push(varValue);
+            } else {
+              throw new Error(`Аргумент "${arg}" не является числом или переменной`);
+            }
+          }
+        }
+      }
+      
+      // Вызываем функцию
+      const result = await this.executeFunction(funcName, args);
+      if (this.onOutput) {
+        this.onOutput(String(result));
+      }
+      return;
+    }
+    
     if (node.command.includes('=')) {
       const [variable, expression] = node.command.split('=').map(s => s.trim());
+      
+      // Проверяем, есть ли вызов функции в выражении
+      const exprFuncMatch = expression.match(/^(\w+)\s*\(([^)]*)\)$/);
+      if (exprFuncMatch) {
+        // Это вызов функции в выражении
+        const funcName = exprFuncMatch[1];
+        const argsStr = exprFuncMatch[2].trim();
+        
+        const args: (number | string)[] = [];
+        if (argsStr) {
+          const argParts = argsStr.split(',').map(s => s.trim());
+          for (const arg of argParts) {
+            const num = parseFloat(arg);
+            if (!isNaN(num) && String(num) === arg) {
+              args.push(num);
+            } else if ((arg.startsWith('"') && arg.endsWith('"')) || (arg.startsWith("'") && arg.endsWith("'"))) {
+              args.push(arg.slice(1, -1));
+            } else {
+              const varValue = this.getVariableValue(arg);
+              if (varValue !== undefined) {
+                args.push(varValue);
+              } else {
+                throw new Error(`Аргумент "${arg}" не является числом или переменной`);
+              }
+            }
+          }
+        }
+        
+        const result = await this.executeFunction(funcName, args);
+        this.context.variableTypes.set(variable, 'int');
+        this.context.variables.set(variable, typeof result === 'string' ? parseFloat(result) || 0 : result);
+        if (this.onOutput) {
+          this.onOutput(`${variable} = ${result}`);
+        }
+        return;
+      }
       
       if (this.isArrayAssignment(variable)) {
         if (!this.arrayExists(variable)) {

@@ -31,7 +31,10 @@ export function consoleLog(msg: string) {
   consoleState.logs.push(String(msg));
   renderConsole();
 
-  consoleTextEl.scrollTop = consoleTextEl.scrollHeight;
+  const consoleBody = consoleTextEl.parentElement;
+  if (consoleBody) {
+    consoleBody.scrollTop = consoleBody.scrollHeight;
+  }
 }
 
 function clearLogs() {
@@ -188,25 +191,10 @@ headerEl.addEventListener("pointermove", (e) => {
   posState.left = clamp(newLeft, 0, Math.max(0, maxLeft));
   posState.top = clamp(newTop, 0, Math.max(0, maxTop));
   applyConsolePos();
-  pushBlocksAwayFromMovedConsole();
+  // Console is above blocks via z-index - no need to push blocks
 });
 
 headerEl.addEventListener("pointerup", () => (draggingConsole = false));
-function pushBlocksAwayFromMovedConsole() {
-  const blocks = canvas.querySelectorAll('.placed-block') as NodeListOf<HTMLElement>;
-  const consoleBounds = getConsoleBounds();
-  
-  blocks.forEach(block => {
-    const left = parseFloat(block.style.left) || 0;
-    const top = parseFloat(block.style.top) || 0;
-    
-    if (isOverlappingConsole(block, left, top)) {
-      const newPos = pushBlockAwayFromConsole(block, left, top);
-      block.style.left = newPos.left + 'px';
-      block.style.top = newPos.top + 'px';
-    }
-  });
-}
 headerEl.addEventListener("pointercancel", () => (draggingConsole = false));
 
 // ================== Console Input Handling ==================
@@ -274,7 +262,21 @@ interpreter.setCallbacks(
   
 
   (error: InterpreterError) => {
-    consoleLog(`❌ Ошибка в блоке ${error.blockId}: ${error.message}`);
+    const errorMsg = error.message && typeof error.message === 'object' 
+      ? JSON.stringify(error.message) 
+      : (error.message || 'Неизвестная ошибка');
+    
+    // Русские названия типов ошибок
+    const typeNames: Record<string, string> = {
+      'SyntaxError': 'Синтаксическая ошибка',
+      'TypeError': 'Ошибка типа',
+      'ReferenceError': 'Ошибка обращения',
+      'RuntimeError': 'Ошибка выполнения',
+      'ValueError': 'Ошибка значения'
+    };
+    
+    const typeName = typeNames[error.errorType] || error.errorType;
+    consoleLog(`❌ ${typeName} в блоке ${error.blockId}: ${errorMsg}`);
     highlightErrorBlock(error.blockId);
   }
 );
@@ -329,7 +331,13 @@ runBtn.addEventListener('click', async () => {
     consoleLog('✅ Программа завершена');
     
   } catch (error) {
-    consoleLog(`❌ Критическая ошибка: ${error instanceof Error ? error.message : String(error)}`);
+    // Правильно обрабатываем как Error, так и plain objects
+    const msg = error instanceof Error 
+      ? error.message 
+      : (error && typeof error === 'object' && 'message' in error) 
+        ? (error as any).message 
+        : String(error);
+    consoleLog(`❌ Критическая ошибка: ${msg}`);
   }
 });
 
@@ -365,7 +373,13 @@ debugBtn.addEventListener('click', async () => {
     consoleLog('✅ Программа завершена');
     
   } catch (error) {
-    consoleLog(`❌ Критическая ошибка: ${error instanceof Error ? error.message : String(error)}`);
+    // Правильно обрабатываем как Error, так и plain objects
+    const msg = error instanceof Error 
+      ? error.message 
+      : (error && typeof error === 'object' && 'message' in error) 
+        ? (error as any).message 
+        : String(error);
+    consoleLog(`❌ Критическая ошибка: ${msg}`);
   } finally {
     stopDebug();
   }
@@ -778,11 +792,7 @@ function onMove(e: MouseEvent) {
   if (x > maxX) x = maxX;
   if (y < 0) y = 0;
 
-
-  if (isOverlappingConsole(active, x, y)) {
-    const newPos = pushBlockAwayFromConsole(active, x, y);
-    x = newPos.left;
-    y = newPos.top;}
+  // Console is above blocks via z-index - blocks can go under console
   active.style.left = x + "px";
   active.style.top = y + "px";
 }
@@ -828,82 +838,11 @@ function ensureCanvasHeight() {
   const neededHeight = Math.max(workspaceWrap.clientHeight, maxBottom + 100);
   canvas.style.minHeight = neededHeight + 'px';
 }
-function getConsoleBounds() {
-  const rect = consoleEl.getBoundingClientRect();
-  const canvasRect = canvas.getBoundingClientRect();
-  return {
-    left: rect.left - canvasRect.left,
-    right: rect.right - canvasRect.left,
-    top: rect.top - canvasRect.top + workspaceWrap.scrollTop,
-    bottom: rect.bottom - canvasRect.top + workspaceWrap.scrollTop,
-    width: rect.width,
-    height: rect.height
-  };
-}
-function isOverlappingConsole(blockEl: HTMLElement, newLeft: number, newTop: number): boolean {
-  const consoleBounds = getConsoleBounds();
-  const blockRight = newLeft + blockEl.offsetWidth;
-  const blockBottom = newTop + blockEl.offsetHeight;
-  return !(
-    blockRight < consoleBounds.left ||
-    newLeft > consoleBounds.right ||
-    blockBottom < consoleBounds.top ||
-    newTop > consoleBounds.bottom
-  );
-}
-function pushBlockAwayFromConsole(blockEl: HTMLElement, targetLeft: number, targetTop: number): { left: number; top: number } {
-  const consoleBounds = getConsoleBounds();
-  const blockRight = targetLeft + blockEl.offsetWidth;
-  const blockBottom = targetTop + blockEl.offsetHeight;
-  let newLeft = targetLeft;
-  let newTop = targetTop;
-  if (!(blockRight < consoleBounds.left ||
-        newLeft > consoleBounds.right ||
-        blockBottom < consoleBounds.top ||
-        newTop > consoleBounds.bottom)) {
-
-    const blockCenterX = targetLeft + blockEl.offsetWidth / 2;
-    const blockCenterY = targetTop + blockEl.offsetHeight / 2;
-    const consoleCenterX = (consoleBounds.left + consoleBounds.right) / 2;
-    const consoleCenterY = (consoleBounds.top + consoleBounds.bottom) / 2;
-    const overlapLeft = Math.max(0, blockRight - consoleBounds.left);
-    const overlapRight = Math.max(0, consoleBounds.right - newLeft);
-    const overlapTop = Math.max(0, blockBottom - consoleBounds.top);
-    const overlapBottom = Math.max(0, consoleBounds.bottom - newTop);
-    const minOverlapX = Math.min(overlapLeft, overlapRight);
-    const minOverlapY = Math.min(overlapTop, overlapBottom);
-    if (minOverlapX < minOverlapY) {
-      if (overlapLeft < overlapRight) {
-        newLeft = consoleBounds.right + 5;
-      } else {
-        newLeft = consoleBounds.left - blockEl.offsetWidth - 5; 
-      }
-    } else {
-      if (overlapTop < overlapBottom) {
-        newTop = consoleBounds.bottom + 5; 
-      } else {
-        newTop = consoleBounds.top - blockEl.offsetHeight - 5; 
-      }
-    }
-    const maxX = workspaceWrap.clientWidth - blockEl.offsetWidth;
-    const maxY = canvas.clientHeight - blockEl.offsetHeight;
-    newLeft = Math.max(0, Math.min(newLeft, maxX));
-    newTop = Math.max(0, Math.min(newTop, maxY));
-  }
-  return { left: newLeft, top: newTop };
-}
 
 function onUp() {
   if (!active) return;
 
-  const currentLeft = parseFloat(active.style.left) || 0;
-  const currentTop = parseFloat(active.style.top) || 0;
-  if (isOverlappingConsole(active, currentLeft, currentTop)) {
-    const newPos = pushBlockAwayFromConsole(active, currentLeft, currentTop);
-    active.style.left = newPos.left + "px";
-    active.style.top = newPos.top + "px";
-  }
-
+  // Console is above blocks - no need to check overlap
   const target = findBestSnapTarget(active);
   if (target) {
     snapUnder(active, target);
@@ -970,10 +909,7 @@ toolbox.addEventListener("mousedown", (e) => {
   const grabOffsetY = e.clientY - itemRect.top;
   let initLeft = e.clientX - canvasRect.left - grabOffsetX;
   let initTop  = e.clientY - canvasRect.top  - grabOffsetY + workspaceWrap.scrollTop;
-  if (isOverlappingConsole(clone, initLeft, initTop)) {
-  const consoleBounds = getConsoleBounds();
-  initTop = consoleBounds.bottom + 20; 
-}
+  // Console is above blocks - blocks can be placed under console
   const maxInitTop = Math.max(0, (canvas.clientHeight || workspaceWrap.clientHeight) - clone.offsetHeight - 20);
   initTop = Math.min(initTop, maxInitTop);
   clone.style.left = initLeft + "px";
@@ -1113,6 +1049,11 @@ saveBtn.addEventListener('click', () => {
     return;
   }
   
+  // Ask for filename
+  const defaultName = `vibeblock_${new Date().toISOString().slice(0, 10)}`;
+  const fileName = prompt('Введите имя файла для сохранения:', defaultName);
+  if (!fileName) return; // User cancelled
+  
   const saveData = {
     version: 1,
     blocks: blocks.map(block => {
@@ -1147,13 +1088,18 @@ saveBtn.addEventListener('click', () => {
   
   const a = document.createElement('a');
   a.href = url;
-  a.download = `vibeblock_${new Date().toISOString().slice(0, 10)}.vb.json`;
+  // Ensure .vb.json extension
+  let finalName = fileName.trim();
+  if (!finalName.endsWith('.vb.json')) {
+    finalName = finalName.endsWith('.json') ? finalName.replace('.json', '.vb.json') : finalName + '.vb.json';
+  }
+  a.download = finalName;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   
-  consoleLog(`💾 Алгоритм сохранен (${blocks.length} блоков)`);
+  consoleLog(`💾 Алгоритм сохранен как "${finalName}" (${blocks.length} блоков)`);
 });
 
 loadBtn.addEventListener('click', () => {
@@ -1170,7 +1116,8 @@ fileInput.addEventListener('change', (e) => {
       const saveData = JSON.parse(event.target?.result as string);
       loadAlgorithm(saveData);
     } catch (error) {
-      consoleLog(`❌ Ошибка при загрузке файла: ${error instanceof Error ? error.message : String(error)}`);
+      const msg = error instanceof Error ? error.message : (error && typeof error === 'object' && 'message' in error) ? (error as any).message : String(error);
+      consoleLog(`❌ Ошибка при загрузке файла: ${msg}`);
     }
   };
   reader.readAsText(file);
@@ -1187,6 +1134,9 @@ function getBlockSaveType(block: HTMLElement): string {
   if (block.classList.contains('command-part')) return 'command-part';
   if (block.classList.contains('func-def-part')) return 'func-def-part';
   if (block.classList.contains('return-part')) return 'return-part';
+  if (block.classList.contains('toint-part')) return 'toint-part';
+  if (block.classList.contains('tofloat-part')) return 'tofloat-part';
+  if (block.classList.contains('tostring-part')) return 'tostring-part';
   if (block.classList.contains('end-part-if')) return 'end-part-if';
   if (block.classList.contains('end-part-for')) return 'end-part-for';
   if (block.classList.contains('make-array')) return 'make-array';
@@ -1216,7 +1166,8 @@ function loadAlgorithm(saveData: any) {
         loadedCount++;
       }
     } catch (error) {
-      console.warn('Failed to load block:', error);
+      const msg = error instanceof Error ? error.message : (error && typeof error === 'object' && 'message' in error) ? (error as any).message : String(error);
+      console.warn('Failed to load block:', msg);
     }
   });
   

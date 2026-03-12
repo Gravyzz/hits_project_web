@@ -29,6 +29,9 @@ export interface ASTNode {
   functionName?: string;
   parameters?: string[];
   returnValue?: string;
+  convertType?: string;
+  variable?: string;
+  value?: string;
 }
 
 export interface FunctionDefinition {
@@ -52,6 +55,7 @@ export interface ExecutionContext {
 
 export interface InterpreterError {
   message: string;
+  errorType: 'SyntaxError' | 'TypeError' | 'ReferenceError' | 'RuntimeError' | 'ValueError';
   blockId: string;
   lineNumber: number;
 }

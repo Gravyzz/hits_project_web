@@ -65,11 +65,17 @@ export class BlockParser {
     if (el.classList.contains('command-part')) return 'command';
     if (el.classList.contains('func-def-part')) return 'func-def';
     if (el.classList.contains('return-part')) return 'return';
+    if (el.classList.contains('toint-part')) return 'toint';
+    if (el.classList.contains('tofloat-part')) return 'tofloat';
+    if (el.classList.contains('tostring-part')) return 'tostring';
     if (el.classList.contains('end-part-if') || el.classList.contains('end-part-for')) return 'end';
     return 'unknown';
   }
 
   private static buildAST(blocks: RawBlock[], start: number, end: number): ASTNode[] {
+    // First pass: validate else without if
+    this.validateNoOrphanElse(blocks, start, end);
+    
     const nodes: ASTNode[] = [];
     let i = start;
 
@@ -124,6 +130,18 @@ export class BlockParser {
         const returnValue = this.getInput(b.element, 'Значение');
         nodes.push({ kind: 'return', returnValue, element: b.element });
         i++;
+      } else if (b.type === 'toint') {
+        const variable = this.getInput(b.element, 'переменная');
+        nodes.push({ kind: 'convert', convertType: 'toInt', variable, element: b.element });
+        i++;
+      } else if (b.type === 'tofloat') {
+        const variable = this.getInput(b.element, 'переменная');
+        nodes.push({ kind: 'convert', convertType: 'toFloat', variable, element: b.element });
+        i++;
+      } else if (b.type === 'tostring') {
+        const variable = this.getInput(b.element, 'переменная');
+        nodes.push({ kind: 'convert', convertType: 'toString', variable, element: b.element });
+        i++;
       } else {
         i++; 
       }
@@ -162,12 +180,24 @@ export class BlockParser {
     const parameters = paramString ? paramString.split(',').map(p => p.trim()) : [];
     
 
-    const { bodyEnd } = this.findEnd(blocks, start, end, 'func');
-    const body = this.buildAST(blocks, start + 1, bodyEnd);
+    // Функция заканчивается на блоке return, end не требуется
+    // Берём последний return в функции
+    let bodyEnd = -1;
+    for (let i = start + 1; i < end; i++) {
+      if (blocks[i].type === 'return') {
+        bodyEnd = i;  // Перезаписываем, чтобы найти последний return
+      }
+    }
+    
+    if (bodyEnd === -1) {
+      throw new Error(`Функция "${functionName}" должна возвращать значение (используйте блок return)`);
+    }
+    
+    const body = this.buildAST(blocks, start + 1, bodyEnd + 1);
     
     return {
       node: { kind: 'func-def', functionName, parameters, body, element: funcBlock.element },
-      nextIndex: bodyEnd < end ? bodyEnd + 1 : bodyEnd,
+      nextIndex: bodyEnd + 1,
     };
   }
 
@@ -209,6 +239,47 @@ export class BlockParser {
       node: { kind: 'if', condition, body: thenBody, elseBody: elseBodyNodes, element: ifBlock.element },
       nextIndex: endIdx < end ? endIdx + 1 : endIdx,
     };
+  }
+
+  // Check if else is used without if - validation
+  private static validateNoOrphanElse(blocks: RawBlock[], start: number, end: number): void {
+    // Track if blocks: stack of if block indices
+    const ifStack: number[] = [];
+    
+    for (let i = start; i < end; i++) {
+      const t = blocks[i].type;
+      if (t === 'if' || t === 'while' || t === 'for' || t === 'func-def') {
+        ifStack.push(i);
+      } else if (t === 'end') {
+        ifStack.pop();
+      } else if (t === 'else') {
+        // Check if there's a matching if on the stack without else
+        let foundIfWithoutElse = false;
+        for (let j = ifStack.length - 1; j >= 0; j--) {
+          const ifIdx = ifStack[j];
+          if (blocks[ifIdx].type === 'if') {
+            // Check if this if already has an else between ifIdx and current position
+            let hasElse = false;
+            for (let k = ifIdx + 1; k < i; k++) {
+              if (blocks[k].type === 'else') {
+                hasElse = true;
+                break;
+              }
+            }
+            if (!hasElse) {
+              foundIfWithoutElse = true;
+              break;
+            }
+          }
+        }
+        
+        if (!foundIfWithoutElse) {
+          // Else without matching if
+          blocks[i].element.classList.add('error');
+          throw new Error('Блок else не может использоваться без предшествующего блока if');
+        }
+      }
+    }
   }
 
   private static parseWhile(blocks: RawBlock[], start: number, end: number): { node: ASTNode; nextIndex: number } {
