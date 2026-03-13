@@ -58,6 +58,7 @@ export class Interpreter {
     }
   }
 
+  //запуск программы
   async execute(astNodes: ASTNode[]): Promise<void> {
 
     this.context.variables.clear();
@@ -76,12 +77,9 @@ export class Interpreter {
 
       await this.executeNodeList(astNodes);
     } catch (error) {
-      // Если ошибка уже InterpreterError - перебрасываем как есть
       if (error instanceof Object && 'errorType' in error) {
         throw error;
       }
-      
-      // Определяем тип ошибки по сообщению
       let errorType: InterpreterError['errorType'] = 'RuntimeError';
       const msg = error instanceof Error ? error.message : String(error);
       
@@ -135,7 +133,6 @@ export class Interpreter {
     throw interpreterError;
   }
 
-  // Execute a function and return its result
   async executeFunction(functionName: string, args: (number | string)[]): Promise<number | string> {
     
     const funcDef = this.context.functions.get(functionName);
@@ -148,13 +145,13 @@ export class Interpreter {
       throw new Error(`Функция "${functionName}" ожидает ${funcDef.parameters.length} аргументов, получено ${args.length}`);
     }
     
-    // Save current context
+    //сохраняем внешний контекст, чтобы функция работала как отдельная локальная область видимости
     const savedVars = new Map(this.context.variables);
     const savedFloatVars = new Map(this.context.floatVariables);
     const savedStringVars = new Map(this.context.stringVariables);
     const savedVarTypes = new Map(this.context.variableTypes);
     
-    // Set function parameters
+    //параметры функции записываем в контекст как локальные переменные текущего вызова
     for (let i = 0; i < funcDef.parameters.length; i++) {
       const paramName = funcDef.parameters[i];
       const argValue = args[i];
@@ -166,8 +163,7 @@ export class Interpreter {
       }
     }
     
-    
-    // Execute function body
+  
     let returnValue: number | string | undefined;
     try {
       for (const node of funcDef.body) {
@@ -178,7 +174,7 @@ export class Interpreter {
         await this.executeNode(node);
       }
     } finally {
-      // Restore context
+      //после выхода из функции возвращаем прежний внешний контекст
       this.context.variables = savedVars;
       this.context.floatVariables = savedFloatVars;
       this.context.stringVariables = savedStringVars;
@@ -203,6 +199,7 @@ export class Interpreter {
     }
 
 
+    // режим дебага
     if (this.debugMode && this.onDebugStep) {
       await this.onDebugStep(node, this.context);
       if (this.debugMode) {
@@ -254,12 +251,10 @@ export class Interpreter {
           break;
       }
     } catch (error) {
-      // Если уже InterpreterError — пробрасываем как есть
       if (error instanceof Object && 'errorType' in error) {
         throw error;
       }
-      
-      // Определяем тип ошибки по сообщению
+    
       let errorType: InterpreterError['errorType'] = 'RuntimeError';
       const msg = error instanceof Error ? error.message : String(error);
       
@@ -297,16 +292,14 @@ export class Interpreter {
       if (node.initialValue && node.initialValue.trim() !== '') {
         const rawValue = node.initialValue.trim();
         
-        // Для строковых переменных обязательны кавычки
         if (dataType === 'str') {
           if (!rawValue.startsWith('"') && !rawValue.startsWith("'")) {
             throw new Error(`Строковое значение должно быть в кавычках. Пример: "${rawValue}"`);
           }
-          // Убираем внешние кавычки
-          const strValue = rawValue.slice(1, -1);
+          const strValue = rawValue.slice(1, -1); //обрезаем кавычки
           this.context.stringVariables.set(varName, strValue);
         } else {
-          // Для int и float используем парсер выражений
+          //числовые данные
           const result = this.expressionParser.evaluate(rawValue);
           this.setVariableValue(varName, result, dataType);
         }
@@ -327,6 +320,7 @@ export class Interpreter {
     }
   }
 
+  // интерпретатор приводит тип и кладёт значение в нужное хранилище контекста
   private setVariableValue(name: string, value: number | string, expectedType?: 'int' | 'float' | 'str'): void {
     const varType = expectedType || this.context.variableTypes.get(name);
     
@@ -357,6 +351,7 @@ export class Interpreter {
     }
   }
 
+  //объявление массива
   private async executeArrayDecl(node: ASTNode): Promise<void> {
     if (!node.name) return;
     
@@ -423,6 +418,7 @@ export class Interpreter {
     }
   }
 
+  
   private async executeWhile(node: ASTNode): Promise<void> {
     if (!node.condition) return;
     
@@ -520,9 +516,7 @@ export class Interpreter {
 
   private async executeReturn(node: ASTNode): Promise<number | string | undefined> {
     if (!node.returnValue) return undefined;
-    
-    // Отладка
-    
+
     const result = this.expressionParser.evaluate(node.returnValue);
     
     return result;
@@ -538,7 +532,6 @@ export class Interpreter {
       throw new Error(`Переменная "${varName}" не объявлена`);
     }
     
-    // Получаем текущее значение переменной
     let currentValue = this.getVariableValue(varName);
     
     if (currentValue === undefined) {
@@ -556,7 +549,6 @@ export class Interpreter {
           } else {
             result = Math.trunc(currentValue);
           }
-          // Удаляем из других типов, сохраняем как int
           this.context.floatVariables.delete(varName);
           this.context.stringVariables.delete(varName);
           this.context.variableTypes.set(varName, 'int');
@@ -572,7 +564,7 @@ export class Interpreter {
           } else {
             result = currentValue;
           }
-          // Удаляем из других типов, сохраняем как float
+          
           this.context.variables.delete(varName);
           this.context.stringVariables.delete(varName);
           this.context.variableTypes.set(varName, 'float');
@@ -583,7 +575,7 @@ export class Interpreter {
           break;
         case 'toString':
           result = String(currentValue);
-          // Удаляем из других типов, сохраняем как str
+          
           this.context.variables.delete(varName);
           this.context.floatVariables.delete(varName);
           this.context.variableTypes.set(varName, 'str');
@@ -600,13 +592,16 @@ export class Interpreter {
     }
   }
 
+  //анекдот для проверяющих:
+  //Шагает Мюллер по Берлину, тут ему на голову падает кирпич
+  // - Вот тебе раз - сказал Мюллер
+  // - Вот тебе два - сказал Штирлиц и бросил из окна второй кирпич
+ 
   private async executeOutput(node: ASTNode): Promise<void> {
     if (!node.expression) return;
     
     const expr = node.expression.trim();
     
-    // Проверка: текст без кавычек - это ошибка
-    // Текст без кавычек = последовательность букв без операторов и без кавычек
     if (expr.length > 0) {
       const hasQuotes = expr.startsWith('"') || expr.startsWith("'");
       const hasOperators = /[\+\-\*\/\%\(\)]/.test(expr);
@@ -614,12 +609,10 @@ export class Interpreter {
       const isVariableRef = /^\w+$/.test(expr);
       
       if (!hasQuotes && !hasOperators && !isNumber && !isVariableRef) {
-        // Похоже на текст без кавычек
         throw new Error(`Синтаксическая ошибка: текст должен быть в кавычках. Пример: "${expr}"`);
       }
     }
     
-    // Check if it's a string literal
     if ((expr.startsWith('"') && expr.endsWith('"')) || (expr.startsWith("'") && expr.endsWith("'"))) {
       const message = expr.slice(1, -1);
       this.context.output.push(message);
@@ -629,7 +622,6 @@ export class Interpreter {
       return;
     }
     
-    // Проверяем вызов функции: sum(5, 3)
     const funcCallMatch = expr.match(/^(\w+)\s*\(([^)]*)\)$/);
     if (funcCallMatch) {
       const funcName = funcCallMatch[1];
@@ -664,23 +656,21 @@ export class Interpreter {
       return;
     }
     
-    // Check for multiple variables (comma-separated)
     if (expr.includes(',')) {
       const parts = expr.split(',').map(p => p.trim());
       const results: string[] = [];
       
       for (const part of parts) {
         try {
-          // Check if it's a string literal
           if ((part.startsWith('"') && part.endsWith('"')) || (part.startsWith("'") && part.endsWith("'"))) {
             results.push(part.slice(1, -1));
           } else {
-            // Evaluate as expression
+            
             const value = this.expressionParser.evaluate(part);
             results.push(String(value));
           }
         } catch {
-          // If evaluation fails, keep the original text
+        
           results.push(part);
         }
       }
@@ -693,7 +683,6 @@ export class Interpreter {
       return;
     }
     
-    // Single expression
     let message: string;
     try {
       const value = this.expressionParser.evaluate(expr);
@@ -708,35 +697,24 @@ export class Interpreter {
       this.onOutput(message);
     }
   }
-  
-  private isValidExpression(expr: string): boolean {
-    // Check if it's a valid expression (has operators, function calls, etc)
-    return /[\+\-\*\/\%\(\)]/.test(expr) || /\w+\s*\(/.test(expr);
-  }
-
+ 
+  //блок Command
   private async executeCommand(node: ASTNode): Promise<void> {
     if (!node.command) return;
-    
-    // Проверяем, является ли команда вызовом функции (например, "sum(5, 3)")
     const funcCallMatch = node.command.match(/^(\w+)\s*\(([^)]*)\)$/);
     if (funcCallMatch) {
       const funcName = funcCallMatch[1];
       const argsStr = funcCallMatch[2].trim();
-      
-      // Парсим аргументы
       const args: (number | string)[] = [];
       if (argsStr) {
-        // Простой парсинг аргументов через запятую
         const argParts = argsStr.split(',').map(s => s.trim());
         for (const arg of argParts) {
-          // Пробуем распарсить как число
           const num = parseFloat(arg);
           if (!isNaN(num) && String(num) === arg) {
             args.push(num);
           } else if ((arg.startsWith('"') && arg.endsWith('"')) || (arg.startsWith("'") && arg.endsWith("'"))) {
             args.push(arg.slice(1, -1));
           } else {
-            // Это имя переменной
             const varValue = this.getVariableValue(arg);
             if (varValue !== undefined) {
               args.push(varValue);
@@ -747,7 +725,6 @@ export class Interpreter {
         }
       }
       
-      // Вызываем функцию
       const result = await this.executeFunction(funcName, args);
       if (this.onOutput) {
         this.onOutput(String(result));
@@ -758,10 +735,8 @@ export class Interpreter {
     if (node.command.includes('=')) {
       const [variable, expression] = node.command.split('=').map(s => s.trim());
       
-      // Проверяем, есть ли вызов функции в выражении
       const exprFuncMatch = expression.match(/^(\w+)\s*\(([^)]*)\)$/);
       if (exprFuncMatch) {
-        // Это вызов функции в выражении
         const funcName = exprFuncMatch[1];
         const argsStr = exprFuncMatch[2].trim();
         
