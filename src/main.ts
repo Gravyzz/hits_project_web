@@ -21,6 +21,7 @@ const consoleState = {
   logs: ["Ready…"],
 };
 
+// Методы для консоли
 function renderConsole() {
   consoleTextEl.textContent = consoleState.logs.join("\n");
   consoleEl.classList.toggle("is-hidden", !consoleState.visible);
@@ -76,6 +77,7 @@ _measureSpan.style.cssText = `
 `;
 document.body.appendChild(_measureSpan);
 
+// Функция, которая меняет ширину блока в соответ. от inputа
 function autoResizeInput(input: HTMLInputElement) {
   const text = input.value || input.placeholder || '';
   _measureSpan.textContent = text;
@@ -110,7 +112,7 @@ function clampConsoleToWorkspace() {
   applyConsolePos();
 }
 
-
+//для кнопочек как на маке слева
 consoleClearBtn.addEventListener("click", clearLogs);
 consoleHideBtn.addEventListener("click", hideKeepLogs);
 consoleCloseBtn.addEventListener("click", closeClearAndHide);
@@ -191,13 +193,11 @@ headerEl.addEventListener("pointermove", (e) => {
   posState.left = clamp(newLeft, 0, Math.max(0, maxLeft));
   posState.top = clamp(newTop, 0, Math.max(0, maxTop));
   applyConsolePos();
-  // Console is above blocks via z-index - no need to push blocks
 });
 
 headerEl.addEventListener("pointerup", () => (draggingConsole = false));
 headerEl.addEventListener("pointercancel", () => (draggingConsole = false));
 
-// ================== Console Input Handling ==================
 let pendingInputResolve: ((value: string) => void) | null = null;
 let inputElement: HTMLInputElement | null = null;
 
@@ -266,7 +266,7 @@ interpreter.setCallbacks(
       ? JSON.stringify(error.message) 
       : (error.message || 'Неизвестная ошибка');
     
-    // Русские названия типов ошибок
+    // cписок ошиьок
     const typeNames: Record<string, string> = {
       'SyntaxError': 'Синтаксическая ошибка',
       'TypeError': 'Ошибка типа',
@@ -281,6 +281,7 @@ interpreter.setCallbacks(
   }
 );
 
+// Подсветка ошибочного блока
 function highlightErrorBlock(blockId: string) {
 
   document.querySelectorAll('.placed-block.error').forEach(block => {
@@ -299,7 +300,7 @@ function clearErrorHighlights() {
   });
 }
 
-
+//элементы верхней панельки
 const runBtn = document.querySelector('.btn-run') as HTMLButtonElement;
 const debugBtn = document.getElementById('debugBtn') as HTMLButtonElement;
 
@@ -331,7 +332,7 @@ runBtn.addEventListener('click', async () => {
     consoleLog('✅ Программа завершена');
     
   } catch (error) {
-    // Правильно обрабатываем как Error, так и plain objects
+    // обрабатываем как Error, так и plain objects
     const msg = error instanceof Error 
       ? error.message 
       : (error && typeof error === 'object' && 'message' in error) 
@@ -341,7 +342,7 @@ runBtn.addEventListener('click', async () => {
   }
 });
 
-// Debug mode
+// Отладка останавливает исполнение перед каждым узлом AST и позволяет наблюдать пошагово
 debugBtn.addEventListener('click', async () => {
   if (isDebugging) {
     stopDebug();
@@ -385,6 +386,7 @@ debugBtn.addEventListener('click', async () => {
   }
 });
 
+// В debug-режиме динамически создаются дополнительные кнопочки
 function startDebug() {
   isDebugging = true;
   debugBtn.textContent = '🛑 Stop Debug';
@@ -437,6 +439,7 @@ function stopDebug() {
   }
 }
 
+// На каждом деьаг-шаге подсвечиваем текущий блок и показываем снимок состояния контекста
 async function onDebugStep(node: ASTNode, context: ExecutionContext) {
   if (currentDebugBlock) {
     currentDebugBlock.classList.remove('debug-current');
@@ -451,6 +454,7 @@ async function onDebugStep(node: ASTNode, context: ExecutionContext) {
   showVariableState(context);
 }
 
+// вывод переменныз
 function showVariableState(context: ExecutionContext) {
   let varsDisplay = '\n📋 Переменные:\n';
   
@@ -503,7 +507,7 @@ function getZ(el: HTMLElement) {
   return Number.isFinite(z) ? z : 0;
 }
 
-// ---- Snap helpers ----
+// фунции для магнитиков
 function findBestSnapTarget(activeEl: HTMLElement, excludeSet: Set<HTMLElement> | null = null): HTMLElement | null {
   const { left: ax, top: ay } = getLeftTop(activeEl);
   const aW = activeEl.offsetWidth;
@@ -581,7 +585,7 @@ function snapUnder(activeEl: HTMLElement, targetEl: HTMLElement) {
   activeEl.style.top = snapPos.top + "px";
 }
 
-// ==================== Marquee Selection ====================
+// выделение рамкой
 let selectionBox: HTMLElement | null = null;
 let startSelectionX = 0;
 let startSelectionY = 0;
@@ -662,6 +666,7 @@ function collectSelectedGroup(leaderEl: HTMLElement): GroupItem[] {
   });
 }
 
+// это функция была для того, чтобы магнитить группами, но она тормозила очень, поэтому решили отказаться
 function clampGroupToCanvas(group: GroupItem[]) {
   let minL = Infinity, minT = Infinity, maxR = -Infinity, maxB = -Infinity;
 
@@ -694,6 +699,7 @@ function clampGroupToCanvas(group: GroupItem[]) {
   }
 }
 
+//перенос группы блоков, без магнитов :(((((
 function startGroupDrag(leader: HTMLElement, clientX: number, clientY: number) {
   isGroupDrag = true;
   groupLeader = leader;
@@ -760,6 +766,7 @@ function onGroupUp() {
 }
 
 
+//перенос бдлоков
 function startDrag(block: HTMLElement, clientX: number, clientY: number, presetOffsetX?: number, presetOffsetY?: number) {
   active = block;
   active.classList.add("dragging");
@@ -792,7 +799,6 @@ function onMove(e: MouseEvent) {
   if (x > maxX) x = maxX;
   if (y < 0) y = 0;
 
-  // Console is above blocks via z-index - blocks can go under console
   active.style.left = x + "px";
   active.style.top = y + "px";
 }
@@ -822,6 +828,7 @@ function expandCanvasIfNeeded() {
   }
 }
 
+//увеличиваем холст при необходимости
 function ensureCanvasHeight() {
   const blocks = canvas.querySelectorAll('.placed-block');
   if (blocks.length === 0) {
@@ -842,7 +849,6 @@ function ensureCanvasHeight() {
 function onUp() {
   if (!active) return;
 
-  // Console is above blocks - no need to check overlap
   const target = findBestSnapTarget(active);
   if (target) {
     snapUnder(active, target);
@@ -850,9 +856,7 @@ function onUp() {
     active.dataset.prev = target.dataset.id;
   }
 
-  // Не даём блоку уйти за левый/правый край
   clampBlockToCanvas(active);
-  // Расширяем канвас и проверяем что блок не улетел вниз
   ensureCanvasHeight();
 
   const blockTop = parseFloat(active.style.top) || 0;
@@ -872,6 +876,7 @@ function onUp() {
   ensureCanvasHeight();
 }
 
+// создаем копию блока на холсте
 toolbox.addEventListener("mousedown", (e) => {
   const item = (e.target as HTMLElement).closest(".tool-item") as HTMLElement;
   if (!item) return;
@@ -909,7 +914,6 @@ toolbox.addEventListener("mousedown", (e) => {
   const grabOffsetY = e.clientY - itemRect.top;
   let initLeft = e.clientX - canvasRect.left - grabOffsetX;
   let initTop  = e.clientY - canvasRect.top  - grabOffsetY + workspaceWrap.scrollTop;
-  // Console is above blocks - blocks can be placed under console
   const maxInitTop = Math.max(0, (canvas.clientHeight || workspaceWrap.clientHeight) - clone.offsetHeight - 20);
   initTop = Math.min(initTop, maxInitTop);
   clone.style.left = initLeft + "px";
@@ -933,6 +937,7 @@ function clearAllSelected() {
   canvas.querySelectorAll(".placed-block.selected").forEach((b) => b.classList.remove("selected"));
 }
 
+//добавляем выбраннык блоки через шифт
 canvas.addEventListener("mousedown", (e) => {
   if (e.target === canvas && e.button === 0) {
     isSelecting = true;
@@ -1000,6 +1005,7 @@ canvas.addEventListener("click", (e) => {
   selectedBlock = block;
 });
 
+//удаляем правой енопкой мыши
 canvas.addEventListener("contextmenu", (e) => {
   const block = (e.target as HTMLElement).closest(".placed-block") as HTMLElement;
   if (!block) return;
@@ -1040,6 +1046,7 @@ fileInput.accept = '.vb.json';
 fileInput.style.display = 'none';
 document.body.appendChild(fileInput);
 
+//кнопка доля сохранения кода
 saveBtn.addEventListener('click', () => {
   const canvas = document.getElementById('canvas') as HTMLElement;
   const blocks = Array.from(canvas.querySelectorAll('.placed-block')) as HTMLElement[];
@@ -1049,10 +1056,9 @@ saveBtn.addEventListener('click', () => {
     return;
   }
   
-  // Ask for filename
   const defaultName = `vibeblock_${new Date().toISOString().slice(0, 10)}`;
   const fileName = prompt('Введите имя файла для сохранения:', defaultName);
-  if (!fileName) return; // User cancelled
+  if (!fileName) return;
   
   const saveData = {
     version: 1,
@@ -1088,7 +1094,6 @@ saveBtn.addEventListener('click', () => {
   
   const a = document.createElement('a');
   a.href = url;
-  // Ensure .vb.json extension
   let finalName = fileName.trim();
   if (!finalName.endsWith('.vb.json')) {
     finalName = finalName.endsWith('.json') ? finalName.replace('.json', '.vb.json') : finalName + '.vb.json';
@@ -1143,6 +1148,7 @@ function getBlockSaveType(block: HTMLElement): string {
   return 'unknown';
 }
 
+//загружаем код из файла
 function loadAlgorithm(saveData: any) {
   if (!saveData.blocks || !Array.isArray(saveData.blocks)) {
     consoleLog('❌ Неверный формат файла');
@@ -1175,6 +1181,7 @@ function loadAlgorithm(saveData: any) {
   clearAllSelected();
 }
 
+// создаем блок из шаблона
 function createBlockFromSaveData(blockData: any): HTMLElement | null {
 
   const toolbox = document.querySelector('.toolbox') as HTMLElement;
