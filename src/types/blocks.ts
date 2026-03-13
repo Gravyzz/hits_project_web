@@ -30,7 +30,6 @@ export interface ASTNode {
   parameters?: string[];
   returnValue?: string;
   convertType?: string;
-  variable?: string;
   value?: string;
 }
 
