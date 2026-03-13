@@ -6,6 +6,7 @@ interface RawBlock {
   y: number;
 }
 
+//парсим блоки и сортируем их по высоте
 export class BlockParser {
   static parseFromCanvas(canvas: HTMLElement): ASTNode[] {
     const elements = Array.from(canvas.querySelectorAll('.placed-block')) as HTMLElement[];
@@ -22,6 +23,7 @@ export class BlockParser {
   }
 
 
+//смотрим есть ли нескольуо цепочек кода
   private static checkForParallelGroups(elements: HTMLElement[]) {
     if (elements.length < 2) return;
 
@@ -53,6 +55,7 @@ export class BlockParser {
     }
   }
 
+
   private static getBlockType(el: HTMLElement): string {
     if (el.classList.contains('make-variable')) return 'variable';
     if (el.classList.contains('make-array')) return 'array-block';
@@ -72,8 +75,9 @@ export class BlockParser {
     return 'unknown';
   }
 
+  //созжаем AST
   private static buildAST(blocks: RawBlock[], start: number, end: number): ASTNode[] {
-    // First pass: validate else without if
+    // Сначала отдельно валидируем ситуацию с else без соответствующего if.
     this.validateNoOrphanElse(blocks, start, end);
     
     const nodes: ASTNode[] = [];
@@ -150,6 +154,7 @@ export class BlockParser {
     return nodes;
   }
 
+  
   private static parseVariable(el: HTMLElement): ASTNode {
     const nameStr = this.getInput(el, 'Имя');
     const valStr = this.getInput(el, 'Введите знач.');
@@ -164,6 +169,7 @@ export class BlockParser {
     const names = nameStr.split(',').map(n => n.trim()).filter(n => n);
     return { kind: 'variable', dataType, names, initialValue: valStr || null, element: el };
   }
+
 
   private static parseFunction(blocks: RawBlock[], start: number, end: number): { node: ASTNode; nextIndex: number } {
     const funcBlock = blocks[start];
@@ -180,12 +186,11 @@ export class BlockParser {
     const parameters = paramString ? paramString.split(',').map(p => p.trim()) : [];
     
 
-    // Функция заканчивается на блоке return, end не требуется
-    // Берём последний return в функции
+
     let bodyEnd = -1;
     for (let i = start + 1; i < end; i++) {
       if (blocks[i].type === 'return') {
-        bodyEnd = i;  // Перезаписываем, чтобы найти последний return
+        bodyEnd = i;
       }
     }
     
@@ -201,6 +206,7 @@ export class BlockParser {
     };
   }
 
+  
   private static parseIf(blocks: RawBlock[], start: number, end: number): { node: ASTNode; nextIndex: number } {
     const ifBlock = blocks[start];
     const condition = this.getInput(ifBlock.element, 'Условие');
@@ -241,9 +247,8 @@ export class BlockParser {
     };
   }
 
-  // Check if else is used without if - validation
+  //проверка чтобы else был вместе с if
   private static validateNoOrphanElse(blocks: RawBlock[], start: number, end: number): void {
-    // Track if blocks: stack of if block indices
     const ifStack: number[] = [];
     
     for (let i = start; i < end; i++) {
@@ -253,12 +258,10 @@ export class BlockParser {
       } else if (t === 'end') {
         ifStack.pop();
       } else if (t === 'else') {
-        // Check if there's a matching if on the stack without else
         let foundIfWithoutElse = false;
         for (let j = ifStack.length - 1; j >= 0; j--) {
           const ifIdx = ifStack[j];
           if (blocks[ifIdx].type === 'if') {
-            // Check if this if already has an else between ifIdx and current position
             let hasElse = false;
             for (let k = ifIdx + 1; k < i; k++) {
               if (blocks[k].type === 'else') {
@@ -274,7 +277,6 @@ export class BlockParser {
         }
         
         if (!foundIfWithoutElse) {
-          // Else without matching if
           blocks[i].element.classList.add('error');
           throw new Error('Блок else не может использоваться без предшествующего блока if');
         }
