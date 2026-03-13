@@ -32,6 +32,7 @@ export class ExpressionParser {
   private advance() { this.pos++; }
   private ws() { while (this.ch() === ' ' || this.ch() === '\t') this.advance(); }
 
+  //здесь обрабатываются + и -
   private parseExpr(): number | string {
     let r = this.parseTerm();
     this.ws();
@@ -59,6 +60,7 @@ export class ExpressionParser {
     return r;
   }
 
+  // Уровень term отвечает за *, / и %
   private parseTerm(): number | string {
     let r = this.parseFactor();
     this.ws();
@@ -86,6 +88,7 @@ export class ExpressionParser {
     return r;
   }
 
+  // число, строка, переменная, вызов функции, скобки или унарный оператор
   private parseFactor(): number | string {
     this.ws();
     
@@ -182,7 +185,7 @@ export class ExpressionParser {
       if (this.ch() !== ']') throw new Error('Ожидается "]"');
       this.advance();
       
-      // Check if it's a string index access (e.g., "hello"[0])
+      //доступ к элементу массива или доступ к символу строки по индексу
       if (name.startsWith('"') || name.startsWith("'")) {
         return this.parseStringIndex(name, idx);
       }
@@ -193,7 +196,7 @@ export class ExpressionParser {
       return arr[Math.floor(idx)];
     }
     
-    // String character access through variable
+    // Если имя ссылается на строковую переменную, выражение может вернуть её символ
     if (this.ch() === '"' || this.ch() === "'") {
       return this.parseStringIndex(name, 0);
     }
@@ -212,11 +215,10 @@ export class ExpressionParser {
   }
   
   private parseStringIndex(strExpr: string, index: number): number | string {
-    // Handle string literal index access: "hello"[0]
+    // Поддерживаем индексный доступ к строке, чтобы строка вела себя похоже на массив символов
     let strValue: string;
     
     if (strExpr.startsWith('"') || strExpr.startsWith("'")) {
-      // It's a string literal
       strValue = strExpr.slice(1, -1);
     } else if (this.ctx.stringVariables.has(strExpr)) {
       strValue = this.ctx.stringVariables.get(strExpr)!;
@@ -232,6 +234,7 @@ export class ExpressionParser {
     return strValue[idx];
   }
 
+ 
   private parseFunctionCall(functionName: string): number | string {
  
     if (['len', 'toInt', 'toFloat', 'toString'].includes(functionName)) {
@@ -266,10 +269,7 @@ export class ExpressionParser {
     if (args.length !== funcDef.parameters.length) {
       throw new Error(`Функция "${functionName}" ожидает ${funcDef.parameters.length} аргументов, получено ${args.length}`);
     }
-    
-
-    // Пользовательские функции в выражениях ограничены синхронной природой парсера
-    // Для полноценной поддержки нужно переделать архитектуру
+  
     console.warn(`Вызов пользовательской функции "${functionName}" в выражении возвращает 0. Используйте блок Command для вызова функций.`);
     return 0;
   }
@@ -322,11 +322,8 @@ export class ExpressionParser {
   private isDigit(c: string | null): boolean { return c !== null && c >= '0' && c <= '9'; }
   private isAlpha(c: string | null): boolean { 
     if (c === null) return false;
-    // Support Latin, Cyrillic, and other unicode letters
     const code = c.charCodeAt(0);
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c === '_' || 
-           (code >= 0x0400 && code <= 0x04FF) || // Cyrillic
-           (code >= 0x0600 && code <= 0x06FF) || // Arabic
-           (code >= 0x4e00 && code <= 0x9fff);   // Chinese
+           (code >= 0x0400 && code <= 0x04FF);
   }
 }
